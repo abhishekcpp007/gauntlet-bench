@@ -24,6 +24,9 @@ LABEL = "gauntlet.sandbox"
 SNAPSHOT_REPO = "gauntlet-snapshot"
 # GNU timeout exits 124 on TERM, and 137 (128 + SIGKILL) when it has to use KILL.
 TIMEOUT_EXIT_CODES = {124, 137}
+# docker-py gives up on any API call after 60s, and committing a big env (a node_modules
+# tree, say) on a busy daemon takes longer than that
+DOCKER_API_TIMEOUT = 900
 
 
 class SandboxError(RuntimeError):
@@ -71,7 +74,7 @@ class Sandbox:
     def client(self) -> docker.DockerClient:
         if self._client is None:
             try:
-                self._client = docker.from_env()
+                self._client = docker.from_env(timeout=DOCKER_API_TIMEOUT)
             except DockerException as e:
                 raise SandboxError("Can't reach Docker. Is the daemon running?") from e
         return self._client
@@ -384,7 +387,7 @@ class Sandbox:
     @staticmethod
     def cleanup_all(client: docker.DockerClient | None = None, *, snapshots: bool = False) -> int:
         """Remove every gauntlet container (and optionally snapshot images). Returns how many went."""
-        client = client or docker.from_env()
+        client = client or docker.from_env(timeout=DOCKER_API_TIMEOUT)
         removed = 0
         for c in client.containers.list(all=True, filters={"label": LABEL}):
             try:

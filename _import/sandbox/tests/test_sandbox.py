@@ -1,7 +1,9 @@
 import pytest
+from docker.constants import DEFAULT_TIMEOUT_SECONDS
 from docker.errors import NotFound
 
 from gauntlet_sandbox import Sandbox, SandboxConfig, SandboxError, Trajectory
+from gauntlet_sandbox.sandbox import DOCKER_API_TIMEOUT
 
 from .conftest import IMAGE
 
@@ -133,3 +135,8 @@ def test_close_is_idempotent():
 def test_bad_image():
     with pytest.raises(SandboxError):
         Sandbox(SandboxConfig(image="gauntlet/does-not-exist:never")).start()
+
+
+def test_a_slow_commit_has_time_to_finish(sandbox):
+    assert sandbox.client.api.timeout == DOCKER_API_TIMEOUT
+    assert DOCKER_API_TIMEOUT > DEFAULT_TIMEOUT_SECONDS
