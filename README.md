@@ -231,6 +231,24 @@ Every agent episode, validation run, leak scan and grade boots its own container
 
 `gauntlet report` puts a 95% bootstrap interval next to pass@1, resampling tasks and not episodes, and it runs McNemar's exact test between each pair of policies. `--cutoff YYYY-MM-DD` splits every metric into PRs merged before and after that date. Every episode records how it was produced. That covers the harness version and policy params, the image and its fingerprint, plus the grading seed and the time. The report warns when one policy's rows weren't measured the same way.
 
+## Run it on Harbor
+
+Every task exports to [Harbor](https://github.com/harbor-framework/harbor)'s task layout, so any agent Harbor can drive (Claude Code, Codex, OpenHands, mini-swe-agent and the rest) runs on Gauntlet tasks and gets Gauntlet's grading:
+
+```bash
+gauntlet export --format harbor --tasks datasets/gauntlet-live-2026-11/tasks.jsonl -o harbor/live
+harbor run -p harbor/live -a oracle                      # every task should come back reward 1
+harbor run -p harbor/live -a claude-code -m <model>      # trajectories land under jobs/
+```
+
+One task becomes `task.toml`, `instruction.md` (the same prompt a Gauntlet episode starts with), `environment/Dockerfile` (the env rebuilt at the base commit, plus the grader in `/opt/gauntlet`), `solution/solve.sh` (the merged fix, for Harbor's oracle) and `tests/`. The hidden tests live only in `tests/task.json`, which Harbor sends to the verifier and never to the agent.
+
+The part that matters is where grading happens. When the agent stops, a collect hook diffs its tree into `/logs/artifacts/gauntlet.patch`. Harbor then starts a **separate verifier container** from the same Dockerfile, a fresh env that never saw the agent, carries only that diff across, and runs `gauntlet harbor-grade` there. That's the same grader `gauntlet run` uses, with canaries, renamed targets and file hashes, plus Cheat Catcher's patch rules. It writes `reward.json` with Gauntlet's reward and `resolved`, and `gauntlet.json` with the full grade. The rubric judge is left out because the verifier is offline, and its weight is spread over the rest the way `compute_reward` already does.
+
+Both containers start with no network. An agent that calls a model API from inside its container needs that host let through: `--agent-host api.anthropic.com` turns the agent's network into an allowlist of exactly that. Never allow GitHub, or the merged fix is one fetch away. Harbor's local Docker provider can't change a container's network once it's running, so the policy is set at start time, and blocking needs the `nft_fib_inet` kernel module. GitHub's Linux runners have it. Docker Desktop on a Mac doesn't, so a local run there needs `public` swapped in by hand.
+
+The [Harbor workflow](.github/workflows/harbor.yml) checks all of this on every push, offline, on a real pytest task and a real vitest task: `oracle` has to come back resolved at reward 1, `nop` has to lose, and a forged conftest that rewrites every report to "passed" has to be caught by the verifier. The weekly [Live tasks](.github/workflows/live.yml) job publishes its new tasks as Harbor task folders too, ready for `harbor run`.
+
 ## Limits
 
 - **The nightly is small.** It plays 4 random Live Python tasks. Live JS and LHT were calibrated once, for the shipped results, and they aren't in the nightly.

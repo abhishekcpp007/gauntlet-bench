@@ -327,7 +327,7 @@ def cmd_export(args: argparse.Namespace) -> int:
     dest.mkdir(parents=True, exist_ok=True)
     n = 0
     for task in _read_models(args.tasks, HarnessTask):
-        export_task(task, dest, grader_ref=args.grader_ref)
+        export_task(task, dest, grader_ref=args.grader_ref, agent_hosts=tuple(args.agent_host))
         n += 1
     print(f"wrote {n} Harbor tasks to {dest}")
     return 0
@@ -547,6 +547,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--format", choices=["harbor"], required=True)
     p.add_argument("--tasks", help="tasks.jsonl")
     p.add_argument("--grader-ref", default="main", help="the gauntlet commit the verifier installs")
+    p.add_argument(
+        "--agent-host",
+        action="append",
+        default=[],
+        help="a host the agent's container may reach, e.g. a model API (repeatable)",
+    )
     p.add_argument("-o", "--output", required=True)
     p.set_defaults(fn=cmd_export)
 
