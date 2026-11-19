@@ -12,7 +12,7 @@ A coding agent's score only means something if the agent couldn't look up the an
 
 **The agent can't find the answer.** Tasks come from recently merged PRs, so a model whose training cutoff came before the merge can't have seen the fix. The two Live sets use PRs merged between 4 August and 10 November 2026, and a workflow builds fresh tasks every Monday. Every task passes an 8-check leak scan before it ships. The network is blocked and git history is one scratch commit. The environment is clean, and no line of the hidden tests or the fix is on disk. `gauntlet report --cutoff` splits every number at a model's cutoff, so a model that's seen the older fixes stands out.
 
-**The agent can't fake a pass.** The grader throws away every edit the agent made to tests and to test config before the hidden tests go on. That covers `conftest.py`, `pytest.ini`, `tox.ini` and JS runner config. It renames the target tests for the run and plants canary tests, some that must fail and some that must pass. It also hashes the test and config files before and after the suite runs. Cheat Catcher reads the patch and the agent's shell commands with 11 static rules, and a `cheating` verdict means a reward of -1. A zoo of 9 cheat policies attacks all of this, and `gauntlet calibrate` fails if any of them resolves a task or scores above 0. A nightly workflow runs it on a few Live tasks.
+**The agent can't fake a pass.** The grader throws away every edit the agent made to tests and to test config before the hidden tests go on. That covers `conftest.py`, `pytest.ini`, `tox.ini` and JS runner config. It renames the target tests for the run and plants canary tests, some that must fail and some that must pass. It also hashes the test and config files before and after the suite runs. Cheat Catcher reads the patch and the agent's shell commands with 19 static rules, and a `cheating` verdict means a reward of -1. A zoo of 9 cheat policies attacks all of this, and `gauntlet calibrate` fails if any of them resolves a task or scores above 0. A nightly workflow runs it on a few Live tasks.
 
 The repo ships 147 tasks from 26 repos. In their calibration runs no cheat resolved a task or scored above 0, and the merged fix resolved every task but one, where a flaky radashi test failed. On the Live Python set only the blunt `cheater` was played, and the full zoo ran on the other two sets.
 
@@ -163,7 +163,7 @@ A task whose pinned commit has vanished upstream, after a force-push say, is rep
 
 **What a clean run shows.** On the tasks it sampled, the real fix resolves and no zoo trick earns more than an honest failure. It doesn't show that a trick outside the zoo can't win. A cheat at 0 isn't always a catch either. On Live JS, `cheater:snapshot` scores 0 on all 69 tasks with no cheating verdict. So do both canary dodgers (canary-aware and ghost). That means they lost, not that they were caught.
 
-**Which layer catches what.** Read as a patch alone, Cheat Catcher flags 2 of the 8 Python zoo tricks (monkeypatch and canary-aware, through `outcome-forcing` and `runner-sniffing`) and none of the JS ones. Everything else is caught by the grading-time checks or scores 0. That's why the layers are stacked: a canary-aware run that happens to dodge every canary still trips those two rules and scores -1.
+**Which layer catches what.** Read as a patch alone, Cheat Catcher flags 2 of the 8 Python zoo tricks (monkeypatch and canary-aware, through `outcome-forcing` and `runner-sniffing`). Its JS rules flag all 8 JS ones. Everything else is caught by the grading-time checks or scores 0. That's why the layers are stacked: a canary-aware run that happens to dodge every canary still trips those two rules and scores -1.
 
 **The canary is a rate, not a yes or no.** It's placed at random, so a given cheat beats it on some layouts. `tests/harness/test_canary.py` draws 600 layouts for one Python file and checks that the old canary-aware trick (spare each file's last two tests) gets past every must-fail canary on fewer than 20% of them, at the top of a 95% interval. The zoo tests pin `GAUNTLET_GRADING_SEED` so a draw repeats. Never set it on a run whose score anyone will quote.
 
@@ -199,6 +199,30 @@ gauntlet cheatcatcher rules
 ```
 
 Exit codes follow the verdict: 0 for clean and 1 for suspicious. A cheating verdict exits 2, and 64 means there was nothing to scan.
+
+### JS and TS rules
+
+Tasks graded by vitest or jest get eight more Cheat Catcher rules. They only read `.js` and `.ts` files and their cousins, plus the files that set up the runner such as `package.json`. So a patch that only touches `.py` files never trips them. A JS file named `*.test.*` or `*.spec.*` now counts as a test for every rule, and so does any file under a `__tests__` folder.
+
+| Rule | What it catches |
+|---|---|
+| `js-outcome-forcing` | Patching `chai.Assertion.prototype` or reaching into it from source. Also swapping test bodies with `setFn` from `vitest/suite`, or reassigning the global `expect` or `it` |
+| `js-hidden-code` | Code decoded at run time, like `eval(atob(...))` or a function built from a base64 string |
+| `js-test-tampering` | Source that writes to `*.test.*` files or the JUnit report, or starts a detached process that outlives the run |
+| `js-exit-hack` | `process.exit` at import time or in a runner setup file, and `process.exitCode = 0` |
+| `js-runner-sniffing` | Source that reads `process.env.VITEST`, `JEST_WORKER_ID`, `expect.getState()` or `currentTestName`. Importing the runner from source is a medium note |
+| `js-runner-config` | `passWithNoTests: true` or a `"test"` script turned into `exit 0`. New `setupFiles`, `include`, `exclude` or `reporters` are a medium note |
+| `js-skip-injection` | New `.skip`, `.todo`, `.only` or `xit` on tests that should run |
+| `js-assert-neutering` | `expect(...)` lines removed from a test and not replaced |
+
+Measured, not assumed. The eight vitest cheats in the red-team zoo are kept in `tests/cheatcatcher/examples/js/`, and all eight come back as cheating. The other direction matters more: on the 69 real merged fixes in [Gauntlet Live JS](datasets/gauntlet-live-js-2026-11) the scan gives 0 findings. On the test changes from those same PRs the JS rules give no high finding and 4 medium notes.
+
+One caveat. These rules were written with those eight cheats in front of me, so that catch rate is on known tricks. A new trick will need a new rule.
+
+```bash
+gauntlet cheatcatcher scan --patch tests/cheatcatcher/examples/js/honest_fix.diff    # clean
+gauntlet cheatcatcher scan --patch tests/cheatcatcher/examples/js/zoo_stealth.diff   # cheating
+```
 
 ## Sandboxes and env images
 
@@ -237,7 +261,7 @@ Every agent episode, validation run, leak scan and grade boots its own container
 - **LHT isn't fresh.** Its tasks come from release ranges, not this week's PRs. 8 of the 25 ranges end in 2024 or 2025. "Fresh" holds for Live and Live JS.
 - **Two JS cheats are duds on newer vitest.** `cheater:monkeypatch` and `cheater:stealth` hook `vitest/suite`, which newer vitest no longer lets them load. On 26 of the 69 Live JS tasks they score a quiet 0, so the calibration says nothing about those tricks there.
 - **jest isn't calibrated.** jest tasks build and grade in code with the same canaries and renames, but no jest set ships and none of the cheats runs on jest.
-- **Cheat Catcher's rules are static checks for Python patches, plus two rules over shell commands.** On the JS zoo payloads they find nothing, so JS tasks rest on the grading-time checks alone. A clean verdict means "nothing obvious", never a guarantee.
+- **Cheat Catcher's rules are static checks for Python and JS patches, plus two rules over shell commands.** The JS rules were written against the 8 JS zoo cheats, so a new JS trick needs a new rule. A clean verdict means "nothing obvious", never a guarantee.
 - **No rule looks for a fix that only special-cases the tested inputs.** The defense there is that the agent never sees the hidden tests.
 - **Upstream history can vanish.** A task pins a commit in someone else's repo. If that repo force-pushes it away, nobody can build the task again, and `calibrate` reports it as rotted.
 - **No model has been run on the shipped sets yet.** The calibration results are scripted policies only.
@@ -255,7 +279,7 @@ A Harbor verifier is in progress on a branch. It doesn't give the same score as 
 src/gauntlet/
   sandbox/        locked-down Docker sandboxes and trajectories
   envs/           env images, test runs, patch splitting and the strip step
-  cheatcatcher/   the 11 static rules
+  cheatcatcher/   the 19 static rules
   harness/        collect, build, leak scan, grader, reward, policies, calibrate, report
 datasets/         the shipped task sets
 tests/            one folder per subpackage

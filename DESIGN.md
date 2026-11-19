@@ -310,9 +310,9 @@ seeds of canaries and new names, and a patch that ships its own `node_modules/je
   having no test that moves, which is true but not the useful reason.
 - **Duplicate merges.** dayjs gives two tasks for one fix. Nothing compares gold patches
   across tasks yet.
-- **Cheat Catcher's static rules are Python.** On a JS patch it finds nothing, so the JS side
-  stands on the grading-time defences alone: strip, canary, disguise, hash. Those are the ones
-  that held when static analysis didn't, but it is one layer fewer.
+- **Cheat Catcher's JS rules only know the zoo.** Its eight JS and TS rules were written against
+  the eight vitest cheats. A new trick falls back on the grading-time defences: strip, canary,
+  disguise and hash.
 - **LHT is Python only.** Release ranges build through `lht.py`, which filters on `.py`.
 - **`localhost` in Python sandboxes.** Same empty `/etc/hosts`. Fixing it in the sandbox is the
   right place, and it needs a measured before and after on the 53 live tasks first.
