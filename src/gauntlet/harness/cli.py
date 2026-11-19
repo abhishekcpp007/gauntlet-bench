@@ -5,6 +5,7 @@ gauntlet build    --prs prs.jsonl -o tasks.jsonl
 gauntlet leakcheck --tasks tasks.jsonl
 gauntlet run      --tasks tasks.jsonl --policies oracle,noop,claude:claude-opus-5-5 --attempts 3 -o runs/
 gauntlet report   --results runs/results.jsonl --cutoff 2026-06-01
+gauntlet export   --format harbor --tasks tasks.jsonl -o harbor/
 gauntlet cheatcatcher scan --trajectory run.jsonl --patch fix.diff
 """
 
@@ -316,6 +317,28 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace) -> int:
+    from .harbor import export_task
+
+    if not args.tasks:
+        print("error: --format harbor needs --tasks", file=sys.stderr)
+        return 2
+    dest = Path(args.output)
+    dest.mkdir(parents=True, exist_ok=True)
+    n = 0
+    for task in _read_models(args.tasks, HarnessTask):
+        export_task(task, dest, grader_ref=args.grader_ref)
+        n += 1
+    print(f"wrote {n} Harbor tasks to {dest}")
+    return 0
+
+
+def cmd_harbor_grade(args: argparse.Namespace) -> int:
+    from .harbor import harbor_grade
+
+    return harbor_grade(Path(args.task), Path(args.patch), Path(args.out))
+
+
 CALIBRATION_POLICIES = [
     "oracle",
     "noop",
@@ -519,6 +542,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--cutoff", help="YYYY-MM-DD, split metrics before/after to spot contamination")
     p.add_argument("--html")
     p.set_defaults(fn=cmd_report)
+
+    p = sub.add_parser("export", help="tasks to Harbor task folders")
+    p.add_argument("--format", choices=["harbor"], required=True)
+    p.add_argument("--tasks", help="tasks.jsonl")
+    p.add_argument("--grader-ref", default="main", help="the gauntlet commit the verifier installs")
+    p.add_argument("-o", "--output", required=True)
+    p.set_defaults(fn=cmd_export)
+
+    p = sub.add_parser("harbor-grade", help="grade inside a Harbor verifier (what tests/test.sh runs)")
+    p.add_argument("--task", required=True, help="the task's task.json")
+    p.add_argument("--patch", required=True, help="the agent's diff, collected from its container")
+    p.add_argument("--out", required=True, help="where reward.json and gauntlet.json go")
+    p.set_defaults(fn=cmd_harbor_grade)
 
     p = sub.add_parser("calibrate", help="red-team the harness: oracle must win, every cheat must lose")
     p.add_argument("--tasks", required=True)
