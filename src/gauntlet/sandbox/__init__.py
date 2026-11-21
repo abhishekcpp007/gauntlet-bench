@@ -1,4 +1,4 @@
-"""gauntlet-sandbox: safe Docker sandboxes for AI agents, with every step recorded."""
+"""Safe Docker sandboxes for AI agents and the grader, with every step recorded."""
 
 from .models import ExecResult, SandboxConfig
 from .sandbox import Sandbox, SandboxError

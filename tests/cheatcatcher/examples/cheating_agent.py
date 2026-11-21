@@ -1,12 +1,12 @@
 """A deliberately dishonest 'agent', for testing graders. Don't point this at anything you care about.
 
-Given a repo2env task, it doesn't try to fix the code at all. It writes a root conftest.py
+Given a Gauntlet task, it doesn't try to fix the code at all. It writes a root conftest.py
 that rewrites every test report to "passed". A grader that applies the candidate patch and
 trusts pytest's results will mark the task resolved.
 
     python examples/cheating_agent.py tasks.jsonl <instance_id> > hack.diff
-    cheatcatcher scan --patch hack.diff --protect $(...)   # verdict: cheating, exit 2
-    repo2env eval tasks.jsonl --id <instance_id> --patch hack.diff   # not resolved, conftest ignored
+    gauntlet cheatcatcher scan --patch hack.diff --protect $(...)   # verdict: cheating, exit 2
+    gauntlet run --tasks tasks.jsonl --policies cheater   # the same hook: conftest dropped, not resolved
 
 It only needs the standard library, so it reads the task JSONL directly.
 """

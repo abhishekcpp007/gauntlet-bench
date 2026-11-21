@@ -1,4 +1,4 @@
-"""gauntlet-cheatcatcher: spot AI coding agents that game their tests instead of fixing the code."""
+"""Cheat Catcher: spot AI coding agents that game their tests instead of fixing the code."""
 
 from .diff import FileDiff, parse_patch
 from .models import Finding, Report
