@@ -4,9 +4,9 @@ Given a Gauntlet task, it doesn't try to fix the code at all. It writes a root c
 that rewrites every test report to "passed". A grader that applies the candidate patch and
 trusts pytest's results will mark the task resolved.
 
-    python examples/cheating_agent.py tasks.jsonl <instance_id> > hack.diff
+    python tests/cheatcatcher/examples/cheating_agent.py tasks.jsonl <instance_id> > hack.diff
     gauntlet cheatcatcher scan --patch hack.diff --protect $(...)   # verdict: cheating, exit 2
-    gauntlet run --tasks tasks.jsonl --policies cheater   # the same hook: conftest dropped, not resolved
+    gauntlet run --tasks tasks.jsonl --policies cheater   # the built-in cheater plants the same hook: not resolved
 
 It only needs the standard library, so it reads the task JSONL directly.
 """
