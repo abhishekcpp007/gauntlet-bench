@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import threading
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -34,7 +34,8 @@ from textual.theme import BUILTIN_THEMES
 from textual.worker import Worker, WorkerState
 
 from . import format as fmt
-from .jobtypes import FINISHED, JobEvent, JobRecord, JobRunner, Output, Unsubscribe
+from .actions import ACTIONS
+from .jobtypes import FINISHED, ActionInfo, JobEvent, JobRecord, JobRunner, Output, Unsubscribe
 from .models import DataSource, Overview, SearchHit
 from .screens.base import DataScreen, GauntletScreen
 from .screens.confirm import ConfirmPrompt
@@ -56,7 +57,7 @@ from .widgets.filterbar import FilterBar, FilterInput
 from .widgets.grid import DataGrid
 from .widgets.jobstatus import ACTIVE
 from .widgets.messages import CopyRequested
-from .workbench import catalogue
+from .workbench import forms as discovered_forms
 from .workbench.base import ActionForm
 
 EXIT_ERROR = 1
@@ -110,7 +111,7 @@ def grids_ready(screen: Screen) -> bool:
 def restore_place(screen: Screen, place: Place) -> None:
     grids = list(screen.query(DataGrid))
     for grid, key in zip(grids, place.cursors, strict=False):
-        if key is not None and key in {grid.row_key(row) for row in grid.rows}:
+        if key is not None and key in grid.table.rows:
             grid.table.move_cursor(row=grid.table.get_row_index(key), animate=False)
     if place.focused is not None and place.focused < len(grids):
         grids[place.focused].focus_table()
@@ -201,7 +202,8 @@ class GauntletApp(App[None]):
         *,
         jobs: JobRunner | None = None,
         reload: Callable[[], DataSource] | None = None,
-        actions: Sequence[type[ActionForm]] | None = None,
+        actions: Sequence[ActionInfo] | None = None,
+        forms: Mapping[str, type[ActionForm]] | None = None,
         ascii: bool = False,
         theme: str | None = None,
     ) -> None:
@@ -209,7 +211,8 @@ class GauntletApp(App[None]):
         self.source = source
         self.jobs = jobs
         self.reload_source = reload
-        self.actions: tuple[type[ActionForm], ...] = tuple(catalogue() if actions is None else actions)
+        self.actions: tuple[ActionInfo, ...] = tuple(ACTIONS if actions is None else actions)
+        self.forms: dict[str, type[ActionForm]] = dict(discovered_forms() if forms is None else forms)
         self.ascii_mode = ascii
         self.destinations = DESTINATIONS
         self.job_records: dict[str, JobRecord] = {}
@@ -230,7 +233,7 @@ class GauntletApp(App[None]):
         self._scrollbar_render = ScrollBar.renderer
         if jobs is not None:
             self.destinations = (*DESTINATIONS, WORKBENCH)
-            self.add_mode(WORKBENCH.mode, partial(WorkbenchScreen, self.actions))
+            self.add_mode(WORKBENCH.mode, partial(WorkbenchScreen, self.actions, self.forms))
             self.bind(
                 WORKBENCH.key, f"destination('{WORKBENCH.mode}')", description=WORKBENCH.label, show=False
             )
@@ -427,17 +430,17 @@ class GauntletApp(App[None]):
             self.open_text(output.path, output.label)
 
     def find_output(self, output: Output) -> None:
-        path = Path(output.path)
+        """Find the loaded run or task set at the output's path, by path, never by name."""
+        wanted = Path(output.path).resolve()
         if output.kind == "run":
-            resolved = path.resolve()
             for run in self.source.runs():
-                if run.id == path.name or (run.path is not None and Path(run.path).resolve() == resolved):
+                if run.path is not None and Path(run.path).resolve() == wanted:
                     self.call_from_thread(self.open_run, run.id)
                     return
         else:
-            name = path.parent.name if path.suffix else path.name
             for dataset in self.source.datasets():
-                if dataset.id == name:
+                tasks = Path(dataset.tasks_file).resolve() if dataset.tasks_file else None
+                if tasks is not None and wanted in (tasks, tasks.parent):
                     self.call_from_thread(self.open_dataset, dataset.id)
                     return
         message = f"{output.label} isn't loaded yet. It's at {output.path}."
@@ -514,10 +517,10 @@ def load_workbench(
     from gauntlet.tui.store import Store
     from gauntlet.tui.workspace import Workspace
 
-    def reload() -> DataSource:
-        return Store.load(datasets, list(runs), workspace=workspace)
-
-    return reload(), SubprocessJobRunner(Workspace(workspace)), reload
+    place = Workspace(workspace)
+    runner = SubprocessJobRunner(place)
+    store = Store.load(datasets, list(runs), workspace=place.root)
+    return store, runner, store.reload
 
 
 def run(

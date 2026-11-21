@@ -1,28 +1,13 @@
 from pathlib import Path
 
 import gauntlet.tui.app as tui_app
-from gauntlet.harness import cli
 
 from .factories import make_source
-from .workfakes import ScriptedRunner
-
-
-def test_tui_passes_the_workspace_and_defaults_it(monkeypatch):
-    seen = {}
-
-    def fake_run(datasets, runs, *, ascii, theme, workspace):
-        seen.update(workspace=workspace)
-        return 0
-
-    monkeypatch.setattr(tui_app, "run", fake_run)
-    assert cli.main(["tui", "--workspace", "w"]) == 0
-    assert seen == {"workspace": "w"}
-    assert cli.main(["tui"]) == 0
-    assert seen == {"workspace": "gauntlet-work"}
+from .fakejobs import FakeJobRunner
 
 
 def test_run_with_a_workspace_starts_the_workbench(tmp_path, monkeypatch):
-    runner = ScriptedRunner()
+    runner = FakeJobRunner()
     started = {}
 
     def load(datasets, runs, workspace):
@@ -55,3 +40,25 @@ def test_a_workbench_that_cant_start_gets_one_line(tmp_path, monkeypatch, capsys
         capsys.readouterr().out.strip()
         == "error: couldn't load the data: PermissionError: can't write gauntlet-work"
     )
+
+
+def test_the_real_workbench_loads_the_workspace_and_its_runner(tmp_path):
+    from gauntlet.tui.jobs import SubprocessJobRunner
+
+    from .sample import SAMPLE_DATASETS
+
+    source, runner, reload = tui_app.load_workbench(SAMPLE_DATASETS, [], tmp_path / "work")
+    try:
+        assert isinstance(runner, SubprocessJobRunner)
+        assert runner.jobs() == () and (tmp_path / "work" / "jobs").is_dir()
+        fresh = reload()
+        assert fresh is not source and [d.id for d in fresh.datasets()] == [d.id for d in source.datasets()]
+    finally:
+        runner.close()
+
+
+def test_a_workspace_inside_datasets_is_refused(tmp_path, capsys):
+    inside = tmp_path / "datasets" / "work"
+    inside.mkdir(parents=True)
+    assert tui_app.run(workspace=inside) == tui_app.EXIT_ERROR
+    assert "inside a 'datasets' folder" in capsys.readouterr().out

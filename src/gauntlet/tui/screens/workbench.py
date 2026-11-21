@@ -9,8 +9,7 @@ there starts the job and lands on its screen.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from pathlib import Path
+from collections.abc import Mapping, Sequence
 from typing import ClassVar
 
 from rich.console import RenderableType
@@ -26,14 +25,15 @@ from textual.widgets.option_list import Option
 from textual.worker import Worker, WorkerState
 
 from .. import format as fmt
-from ..jobtypes import JobEvent, JobRecord, JobSpec, Machine
-from ..theme import ERROR, PASSED, WARNING, Look, Mark
+from ..jobtypes import ActionInfo, JobEvent, JobRecord, JobSpec, Machine
+from ..theme import ERROR, KEY_SET, NO_FORM, NO_KEY, PASSED, WARNING, Look
 from ..widgets.form import FormView
 from ..widgets.grid import Column, DataGrid
 from ..widgets.jobstatus import ACTIVE, GIGABYTE, disk_size, elapsed, job_mark
 from ..widgets.states import Empty, describe_error
 from ..widgets.themed import Themed
-from ..workbench.base import GROUPS, NEED_LABELS, ActionForm, blocked_reason
+from ..workbench.base import GROUPS, NEED_LABELS, ActionForm, blocked_reason, check_needs
+from ..workspace import Workspace, WorkspaceError
 from .base import GauntletScreen
 from .confirm import ConfirmJob
 
@@ -45,8 +45,8 @@ LOW_DISK_GB = 20
 LOW_DISK_BYTES = LOW_DISK_GB * GIGABYTE
 CHECKING = "Checking the machine first."
 NO_JOBS = Empty("No jobs yet.", "Pick an action, fill in its form and press ctrl+r to review it.")
-NO_KEY = Mark("✗", "x", "no Anthropic key", "muted")
-HAS_KEY = Mark("✓", "+", "Anthropic key set", "good")
+NO_FORM_YET = "This action doesn't have a form in the Workbench yet."
+NO_FORM_HINT = "Run it from the command line for now: gauntlet --help lists every command."
 
 
 def machine_line(machine: Machine | None, look: Look, error: str | None = None) -> Text:
@@ -71,7 +71,7 @@ def machine_line(machine: Machine | None, look: Look, error: str | None = None) 
         text.append(" ")
     text.append(f"{disk_size(machine.free_disk_bytes)} free", style=look.style("warn") if low else "")
     text.append_text(dot)
-    key = HAS_KEY if machine.anthropic_key_set else NO_KEY
+    key = KEY_SET if machine.anthropic_key_set else NO_KEY
     text.append_text(look.mark(key, word=False))
     text.append(f" {key.word}", style=look.style("muted") if not machine.anthropic_key_set else "")
     text.append_text(dot)
@@ -115,7 +115,7 @@ class ActionList(OptionList):
 
 
 class ActionAbout(Themed):
-    """What the focused action does, what it costs and needs, and why it can't start if it can't."""
+    """What the focused action does and needs, and why it can't start if it can't."""
 
     DEFAULT_CSS = """
     ActionAbout {
@@ -126,30 +126,25 @@ class ActionAbout(Themed):
 
     def __init__(self) -> None:
         super().__init__()
-        self.form: type[ActionForm] | None = None
+        self.info: ActionInfo | None = None
         self.blocked: str | None = None
-        self.machine: Machine | None = None
 
-    def show(self, form: type[ActionForm] | None, machine: Machine | None, blocked: str | None) -> None:
-        self.form = form
-        self.machine = machine
+    def show(self, info: ActionInfo | None, blocked: str | None) -> None:
+        self.info = info
         self.blocked = blocked
         self.refresh(layout=True)
 
     def render(self) -> RenderableType:
         look = self.look
-        form = self.form
-        if form is None:
+        info = self.info
+        if info is None:
             return Text("")
-        text = Text(form.description, end="")
-        if form.cost:
-            text.append("\n")
-            text.append_text(look.muted(form.cost))
+        text = Text(info.description, end="")
         text.append("\n\n")
         text.append_text(look.muted("Needs  "))
-        if not form.needs:
+        if not info.needs:
             text.append("nothing but this machine")
-        for index, need in enumerate(form.needs):
+        for index, need in enumerate(info.needs):
             if index:
                 text.append_text(look.muted(f" {look.glyphs.dot} "))
             text.append(NEED_LABELS[need])
@@ -158,6 +153,30 @@ class ActionAbout(Themed):
             text.append_text(look.mark(WARNING, word=False))
             text.append(" Can't start  ", style=look.style("warn", bold=True))
             text.append_text(fmt.safe_text(self.blocked))
+        return text
+
+
+class NoForm(Themed):
+    """In place of a form, for an action the Workbench lists but can't run yet."""
+
+    DEFAULT_CSS = """
+    NoForm {
+        height: 1fr;
+        padding: 1 2;
+        background: $surface;
+    }
+    """
+
+    def __init__(self, info: ActionInfo) -> None:
+        super().__init__(id=info.id)
+        self.info = info
+
+    def render(self) -> RenderableType:
+        look = self.look
+        text = Text.assemble(look.mark(NO_FORM), "\n\n")
+        text.append(NO_FORM_YET)
+        text.append("\n")
+        text.append_text(look.muted(NO_FORM_HINT))
         return text
 
 
@@ -199,12 +218,14 @@ class WorkbenchScreen(GauntletScreen):
     CSS_PATH = "workbench.tcss"
     crumb = "Workbench"
 
-    def __init__(self, actions: Sequence[type[ActionForm]]) -> None:
+    def __init__(self, actions: Sequence[ActionInfo], forms: Mapping[str, type[ActionForm]]) -> None:
         super().__init__()
         self.actions = tuple(actions)
+        self.form_classes = dict(forms)
         self.machine: Machine | None = None
+        self.workspace: Workspace | None = None
         self.forms: dict[str, FormView] = {}
-        self.current: str | None = self.actions[0].action_id if self.actions else None
+        self.current: str | None = self.actions[0].id if self.actions else None
         self._ticker: Timer | None = None
 
     def compose_body(self) -> ComposeResult:
@@ -219,9 +240,13 @@ class WorkbenchScreen(GauntletScreen):
                     right.border_title = self.actions[0].title if self.actions else "Form"
                     right.border_subtitle = "ctrl+r reviews"
                     with ContentSwitcher(id="forms", initial=self.current):
-                        for form in self.actions:
-                            view = FormView(form(), source=lambda: self.source, id=form.action_id)
-                            self.forms[form.action_id] = view
+                        for info in self.actions:
+                            form = self.form_classes.get(info.id)
+                            if form is None:
+                                yield NoForm(info)
+                                continue
+                            view = FormView(form(), info=info, source=lambda: self.source, id=info.id)
+                            self.forms[info.id] = view
                             yield view
             with TabPane("Jobs", id=JOBS_TAB):
                 grid: DataGrid[JobRecord] = DataGrid(
@@ -235,21 +260,24 @@ class WorkbenchScreen(GauntletScreen):
     def action_options(self) -> list[Option | None]:
         options: list[Option | None] = []
         for group, label in GROUPS:
-            members = [form for form in self.actions if form.group == group]
+            members = [info for info in self.actions if info.group == group]
             if not members:
                 continue
             if options:
                 options.append(None)
             options.append(Option(Text(label, style="bold"), disabled=True, id=f"group-{group}"))
-            for form in members:
-                options.append(Option(self.action_prompt(form), id=form.action_id))
+            for info in members:
+                options.append(Option(self.action_prompt(info), id=info.id))
         return options
 
-    def action_prompt(self, form: type[ActionForm]) -> Text:
+    def action_prompt(self, info: ActionInfo) -> Text:
         look = self.gauntlet.look
-        text = Text(f"  {form.title}", end="")
-        if self.machine is not None and blocked_reason(form.needs, self.machine):
-            text.append_text(look.muted(f"  needs {' and '.join(NEED_LABELS[n] for n in form.needs)}"))
+        if info.id not in self.form_classes:
+            return Text.assemble(look.muted(f"  {info.title}  "), look.mark(NO_FORM, word=False))
+        text = Text(f"  {info.title}", end="")
+        if self.machine is not None and blocked_reason(info.needs, self.machine):
+            missing = [c.label for c in check_needs(info.needs, self.machine) if c.met is False]
+            text.append_text(look.muted(f"  needs {' and '.join(missing)}"))
         return text
 
     def on_resize(self, event: Resize) -> None:
@@ -272,22 +300,26 @@ class WorkbenchScreen(GauntletScreen):
                 options.highlighted = index
                 return
 
-    def form_of(self, action_id: str | None) -> type[ActionForm] | None:
-        return next((f for f in self.actions if f.action_id == action_id), None)
+    def info_for(self, action_id: str | None) -> ActionInfo | None:
+        return next((info for info in self.actions if info.id == action_id), None)
 
-    def blocked(self, form: type[ActionForm]) -> str | None:
+    def blocked(self, info: ActionInfo) -> str | None:
         if self.machine is None:
-            return CHECKING if form.needs else None
-        return blocked_reason(form.needs, self.machine)
+            return CHECKING if info.needs else None
+        return blocked_reason(info.needs, self.machine)
 
     def show_action(self, action_id: str) -> None:
-        form = self.form_of(action_id)
-        if form is None:
+        info = self.info_for(action_id)
+        if info is None:
             return
         self.current = action_id
         self.query_one("#forms", ContentSwitcher).current = action_id
-        self.query_one("#form-pane").border_title = form.title
-        self.query_one(ActionAbout).show(form, self.machine, self.blocked(form))
+        pane = self.query_one("#form-pane")
+        pane.border_title = info.title
+        pane.border_subtitle = "ctrl+r reviews" if action_id in self.forms else ""
+        blocked = self.blocked(info) if action_id in self.forms else None
+        self.query_one(ActionAbout).show(info, blocked)
+        self.refresh_bindings()
 
     def on_option_list_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
         if isinstance(event.option_list, ActionList) and event.option.id:
@@ -296,7 +328,8 @@ class WorkbenchScreen(GauntletScreen):
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         if isinstance(event.option_list, ActionList) and event.option.id:
             self.show_action(event.option.id)
-            self.forms[event.option.id].focus_first()
+            if event.option.id in self.forms:
+                self.forms[event.option.id].focus_first()
 
     @work(thread=True, exclusive=True, group=MACHINE_GROUP, exit_on_error=False)
     def recheck(self) -> Machine:
@@ -319,19 +352,29 @@ class WorkbenchScreen(GauntletScreen):
     def set_machine(self, machine: Machine) -> None:
         self.machine = machine
         self.query_one(MachineLine).show(machine)
-        for form in self.actions:
-            view = self.forms[form.action_id]
-            view.workspace = Path(machine.workspace)
-            view.set_blocked(self.blocked(form))
+        try:
+            self.workspace = Workspace(machine.workspace)
+        except WorkspaceError as error:
+            self.query_one(MachineLine).show(machine, str(error))
+            self.workspace = None
+        for info in self.actions:
+            view = self.forms.get(info.id)
+            if view is not None:
+                view.workspace = self.workspace
+                view.set_blocked(self.blocked(info))
         options = self.query_one(ActionList)
-        for form in self.actions:
-            options.replace_option_prompt(form.action_id, self.action_prompt(form))
+        for info in self.actions:
+            options.replace_option_prompt(info.id, self.action_prompt(info))
         if self.current is not None:
             self.show_action(self.current)
 
     def on_form_view_reviewed(self, event: FormView.Reviewed) -> None:
         event.stop()
         spec = event.spec
+        reason = blocked_reason(spec.needs, self.machine) if self.machine is not None else CHECKING
+        if reason:
+            event.view.set_blocked(reason)
+            return
         waits = spec.exclusive and any(
             r.spec.exclusive and r.state in ACTIVE for r in self.gauntlet.job_records.values()
         )
