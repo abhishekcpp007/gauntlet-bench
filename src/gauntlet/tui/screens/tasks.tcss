@@ -1,0 +1,5 @@
+/* The task table with its filter bar, on the Tasks and Dataset screens. */
+
+.task-table {
+    height: 1fr;
+}
