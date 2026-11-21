@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar, cast
 
 from textual.app import ComposeResult
 from textual.binding import Binding, BindingType
+from textual.events import Resize
 from textual.screen import Screen
 from textual.widget import Widget
 from textual.widgets import Footer, TabbedContent
@@ -20,6 +21,8 @@ if TYPE_CHECKING:
     from ..app import GauntletApp
 
 T = TypeVar("T")
+
+ROOMY_FOOTER = 100
 
 
 class GauntletScreen(Screen[None]):
@@ -76,6 +79,13 @@ class GauntletScreen(Screen[None]):
 
     def on_screen_resume(self) -> None:
         self.refresh_chrome()
+
+    def on_resize(self, event: Resize) -> None:
+        roomy = event.size.width >= ROOMY_FOOTER
+        for footer in self.query(Footer):
+            if footer.show_command_palette != roomy:
+                footer.show_command_palette = roomy
+                footer.refresh(recompose=True)
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "filter":

@@ -55,7 +55,8 @@ class TopBar(Themed):
         look = self.look
         width = max(self.size.width - 2 * BAR_PADDING, 0)
         right = look.muted(self.loaded)
-        left = look.accent(WORDMARK, bold=True)
+        left = Text(end="", no_wrap=True)
+        left.append_text(look.accent(WORDMARK, bold=True))
         sep = f" {look.glyphs.crumb} "
         room = width - left.cell_len - 2 - (right.cell_len + 2 if self.loaded else 0)
         crumbs = list(self.crumbs)

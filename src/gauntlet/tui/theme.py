@@ -56,6 +56,12 @@ GAUNTLET_DARK = Theme(
         "block-cursor-blurred-foreground": "#CDD5DF",
         "block-hover-background": "#18202A",
         "input-selection-background": "#6CA8F0 30%",
+        "scrollbar": "#2A3441",
+        "scrollbar-hover": "#41536B",
+        "scrollbar-active": "#6CA8F0",
+        "scrollbar-background": "#141A21",
+        "scrollbar-background-hover": "#141A21",
+        "scrollbar-background-active": "#141A21",
     },
 )
 
@@ -85,6 +91,12 @@ GAUNTLET_LIGHT = Theme(
         "block-cursor-blurred-foreground": "#1E252E",
         "block-hover-background": "#F0F3F7",
         "input-selection-background": "#1F63C4 25%",
+        "scrollbar": "#CDD5DF",
+        "scrollbar-hover": "#9AA9BC",
+        "scrollbar-active": "#1F63C4",
+        "scrollbar-background": "#FFFFFF",
+        "scrollbar-background-hover": "#FFFFFF",
+        "scrollbar-background-active": "#FFFFFF",
     },
 )
 

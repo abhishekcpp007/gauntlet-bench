@@ -29,7 +29,7 @@ ROW_TINT = 0.14
 GUTTER_GAP = 1
 NUMBER_COLUMNS = 2
 
-LineKind = Literal["file", "hunk", "add", "del", "ctx", "meta", "note"]
+LineKind = Literal["file", "hunk", "add", "del", "ctx", "meta", "note", "gap"]
 
 _HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _GIT_HEADER = re.compile(r"^diff --git a/(.*) b/(.*)$")
@@ -89,6 +89,8 @@ def parse_diff(patch: str, *, max_lines: int = MAX_DIFF_LINES) -> ParsedDiff:
             parsed.dropped += 1
 
     def open_file(path: str) -> DiffFile:
+        if parsed.files:
+            keep(DiffLine("gap", ""))
         diff_file = DiffFile(path=path, line=len(parsed.lines))
         parsed.files.append(diff_file)
         keep(DiffLine("file", path))
@@ -260,6 +262,8 @@ class DiffView(ScrollView, can_focus=True):
         text = fmt.visible(row.text).expandtabs(fmt.TAB_WIDTH)
         digits = self._gutter_width()
         pad = " " * GUTTER_GAP
+        if row.kind == "gap":
+            return Strip([]), base
         if row.kind == "note":
             return Strip([Segment(f"{pad}{text}", base + muted)]), base
         if row.kind == "file":

@@ -104,3 +104,9 @@ async def test_narrow_diff_scrolls_sideways_instead_of_wrapping():
         await pilot.pause()
         text = screen_text(app)
         assert all(len(line) <= 40 for line in text.splitlines())
+
+
+def test_files_after_the_first_get_a_blank_line_above_them():
+    kinds = [line.kind for line in parse_diff(GOLD_PATCH + TEST_PATCH).lines]
+    assert kinds[0] == "file"
+    assert kinds[kinds.index("file", 1) - 1] == "gap"

@@ -174,7 +174,7 @@ class OverviewScreen(DataScreen[tuple[Overview, Reference]]):
         yield self.pane(f"Runs {look.glyphs.dot} {len(overview.runs)}", runs, id="runs-pane")
         strip = Vertical(ScoreStrip(reference.grading_steps), id="score-pane", classes="pane")
         strip.border_title = "How a score is made"
-        strip.border_subtitle = "4 for the detail"
+        strip.border_subtitle = "press 4 for the detail"
         yield strip
 
     @staticmethod

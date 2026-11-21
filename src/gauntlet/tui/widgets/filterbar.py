@@ -55,6 +55,21 @@ class FilterInput(Input):
         self.screen.focus_next()
 
 
+class Prompt(Themed):
+    """The `/` in front of the search box."""
+
+    DEFAULT_CSS = """
+    Prompt {
+        width: 3;
+        height: 1;
+        padding: 0 0 0 1;
+    }
+    """
+
+    def render(self) -> RenderableType:
+        return self.look.accent("/", bold=True)
+
+
 class Chips(Themed):
     """The active facets and the match count, on one line."""
 
@@ -96,7 +111,7 @@ class FilterBar(Vertical):
         width: 1fr;
         height: 1;
         border: none;
-        padding: 0 1;
+        padding: 0;
         background: $surface;
     }
     FilterBar > FilterInput:focus {
@@ -119,7 +134,7 @@ class FilterBar(Vertical):
         self,
         groups: Sequence[FacetGroup] = (),
         *,
-        placeholder: str = "/ to filter",
+        placeholder: str = "type to filter",
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
@@ -129,6 +144,7 @@ class FilterBar(Vertical):
         self.facets: dict[str, str] = {}
 
     def compose(self) -> ComposeResult:
+        yield Prompt()
         yield FilterInput(placeholder=self.placeholder, compact=True)
         yield Chips()
 

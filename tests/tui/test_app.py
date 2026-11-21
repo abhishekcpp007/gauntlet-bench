@@ -353,3 +353,14 @@ async def test_breadcrumbs_cut_long_ids_in_the_middle():
         text = top_line(app)
         assert len(text) <= SMALL[0] and "…" in text and text.rstrip().endswith("2 runs")
         assert line.crumbs[-1].startswith("jazzband")
+
+
+async def test_narrow_footer_drops_the_palette_hint_but_keeps_quit():
+    app = GauntletApp(make_source())
+    async with app.run_test(size=SMALL) as pilot:
+        await settle(app, pilot)
+        footer = screen_text(app).splitlines()[-1]
+        assert "Quit" in footer and "Palette" not in footer
+        await pilot.resize_terminal(*WIDE)
+        await settle(app, pilot)
+        assert "Palette" in screen_text(app).splitlines()[-1]
