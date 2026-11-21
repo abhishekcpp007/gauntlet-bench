@@ -93,7 +93,8 @@ async def test_lht_task_shows_its_release_range():
         assert "#100" in text and "Change 1 in the range" in text
         assert "4f1c2ab" in text
         assert "Milestone 1 · 3 tests" in text
-        assert "Dropped regressions · 0" in text
+        lists = {widget.title: widget.ids for widget in screen.query(IdList)}
+        assert lists["Dropped regressions"] == ()
 
 
 async def test_bracket_keys_switch_tabs():
@@ -286,3 +287,16 @@ async def test_failed_load_shows_one_line():
         text = screen_text(app)
         assert "Couldn't load the task" in text
         assert "permission denied" in text
+
+
+async def test_short_terminal_folds_the_facts_into_one_line():
+    app = GauntletApp(make_source())
+    async with app.run_test(size=WIDE) as pilot:
+        screen = await open_task(app, pilot)
+        assert screen.query_one("#task-facts").display
+        assert not screen.query_one("#task-line").display
+        await pilot.resize_terminal(*SMALL)
+        await settle(app, pilot)
+        assert not screen.query_one("#task-facts").display
+        assert screen.query_one("#task-line").display
+        assert "hukkin/tomli · #318 · 2026-10-06 · swe · pytest" in screen_text(app)

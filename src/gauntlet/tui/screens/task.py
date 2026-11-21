@@ -16,6 +16,7 @@ from rich.table import Table
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.events import Resize
 from textual.widget import Widget
 from textual.widgets import Input, Static, TabbedContent, TabPane
 from textual.worker import Worker, WorkerState
@@ -37,6 +38,8 @@ from .base import DataScreen
 TESTS_TAB = "tests"
 P2P_GROUP = "p2p-filter"
 COLUMN_GAP = 2
+EXPLAIN_WIDTH = 64
+COMPACT_HEIGHT = 32
 COUNT_COLUMNS = ("passed", "failed", "skipped")
 
 TEST_CLASSES: tuple[tuple[TestClass, str, str], ...] = (
@@ -137,10 +140,12 @@ class TestClasses(Themed):
         grid.add_column(no_wrap=True)
         grid.add_column(no_wrap=True)
         grid.add_column(justify="right", no_wrap=True)
-        grid.add_column()
+        explain = self.size.width >= EXPLAIN_WIDTH
+        if explain:
+            grid.add_column()
         for key, name, what in TEST_CLASSES:
-            count = Text(fmt.count(self.counts[key]), end="")
-            grid.add_row(look.accent(key.upper(), bold=True), Text(name, end=""), count, look.muted(what))
+            row = [look.accent(key.upper(), bold=True), Text(name, end=""), Text(fmt.count(self.counts[key]))]
+            grid.add_row(*row, *([look.muted(what)] if explain else []))
         return grid
 
 
@@ -163,16 +168,19 @@ class ValidationTable(Themed):
         grid.add_column(no_wrap=True)
         for _ in COUNT_COLUMNS:
             grid.add_column(justify="right", no_wrap=True)
-        grid.add_column()
+        explain = self.size.width >= EXPLAIN_WIDTH
+        if explain:
+            grid.add_column()
         rows: list[tuple[str, Counts, str]] = [
             ("Base run", self.runs.run, "the repo before the PR"),
             ("Tests only", self.runs.test, "hidden tests in, no fix"),
         ]
         rows += [(f"Fix run {i}", counts, "fix and tests") for i, counts in enumerate(self.runs.fix, start=1)]
-        grid.add_row(Text(""), *(look.muted(name) for name in COUNT_COLUMNS), Text(""))
+        grid.add_row(Text(""), *(look.muted(name) for name in COUNT_COLUMNS))
         for label, counts, what in rows:
             numbers = (counts.passed, counts.failed, counts.skipped)
-            grid.add_row(Text(label), *(Text(fmt.count(n)) for n in numbers), look.muted(what))
+            cells = [Text(label), *(Text(fmt.count(n)) for n in numbers)]
+            grid.add_row(*cells, *([look.muted(what)] if explain else []))
         return grid
 
 
@@ -219,6 +227,7 @@ class IdList(Themed):
         rows.add_column()
         for test in self.ids:
             rows.add_row(look.muted(look.glyphs.bullet), fmt.safe_text(test, single_line=True))
+        text.end = "\n"
         return Group(text, rows)
 
 
@@ -316,6 +325,7 @@ class TaskScreen(DataScreen[TaskDetail]):
 
     def build(self, data: TaskDetail) -> Iterable[Widget]:
         yield Horizontal(*self.facts(data), id="task-facts")
+        yield Static(self.summary_line(data), id="task-line")
         row = data.row
         checks_ok = sum(c.ok for c in data.leakchecks)
         tests = fmt.count(row.f2p + row.n2p + row.s2p + row.p2p)
@@ -465,6 +475,18 @@ class TaskScreen(DataScreen[TaskDetail]):
     def on_data_grid_opened(self, event: DataGrid.Opened) -> None:
         if isinstance(event.row, EpisodeRow):
             self.gauntlet.open_episode(event.row.run_id, event.row.episode_id)
+
+    def summary_line(self, data: TaskDetail) -> Text:
+        """The facts on one line, shown instead of the block when the terminal is short."""
+        row = data.row
+        look = self.gauntlet.look
+        pr = f"#{row.pr_number}" if row.pr_number is not None else row.pr_title
+        parts = [row.repo, pr, fmt.date(row.merged_at), row.category, row.runner, row.dataset_id]
+        return fmt.safe_text(f" {look.glyphs.dot} ".join(parts), single_line=True)
+
+    def on_resize(self, event: Resize) -> None:
+        super().on_resize(event)
+        self.set_class(event.size.height < COMPACT_HEIGHT, "-compact")
 
     def copy_target(self) -> tuple[str, str] | None:
         return self.instance_id, "instance id"
