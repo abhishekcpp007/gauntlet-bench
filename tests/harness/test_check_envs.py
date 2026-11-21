@@ -4,9 +4,27 @@ from gauntlet.envs.repo import Repo, clone, git
 
 from gauntlet.harness.build import env_fingerprint
 from gauntlet.harness.cli import main
+from gauntlet.harness.schema import HarnessTask, PRInfo
 
 from .fakerelease import _git, make_release_repo
-from .test_export import TASK
+
+TASK = HarnessTask(
+    instance_id="o__r-7",
+    repo="https://github.com/o/r",
+    pr=PRInfo(repo="o/r", number=7, title="t", url="https://github.com/o/r/pull/7", merged_at="2026-10-01"),
+    base_commit="abc",
+    solution_commit="def",
+    problem_statement="rows can be short",
+    statement_source="issue",
+    image="img",
+    env_fingerprint="f",
+    gold_patch="--- a/x\n+++ b/x\n",
+    test_patch="--- a/t\n+++ b/t\n",
+    test_files=["tests/test_x.py"],
+    f2p=["tests/test_x.py::test_a"],
+    n2p=["tests/test_x.py::test_new"],
+    p2p=["tests/test_x.py::test_old"],
+)
 
 
 def _tasks(tmp_path, monkeypatch, *, path=None, url=None, base="v0.1.0", drifted=False):

@@ -5,7 +5,6 @@ gauntlet build    --prs prs.jsonl -o tasks.jsonl
 gauntlet leakcheck --tasks tasks.jsonl
 gauntlet run      --tasks tasks.jsonl --policies oracle,noop,claude:claude-opus-5-5 --attempts 3 -o runs/
 gauntlet report   --results runs/results.jsonl --cutoff 2026-06-01
-gauntlet export   --format sft --results runs/results.jsonl -o sft.jsonl
 gauntlet pipeline --repo pallets/click --merged-after 2026-06-01 --policies ... -o runs/
 """
 
@@ -326,33 +325,6 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_export(args: argparse.Namespace) -> int:
-    from . import export
-
-    out = _out(args.output)
-    if args.format == "swebench":
-        if not args.tasks:
-            print("error: --format swebench needs --tasks", file=sys.stderr)
-            return 2
-        rows = (export.to_swebench(t) for t in _read_models(args.tasks, HarnessTask))
-    else:
-        if not args.results:
-            print(f"error: --format {args.format} needs --results", file=sys.stderr)
-            return 2
-        from .runner import load_results
-
-        results = load_results(Path(args.results))
-        cal = args.include_calibration
-        rows = {
-            "sft": lambda: export.sft_rows(results, min_reward=args.min_reward, include_calibration=cal),
-            "grpo": lambda: export.grpo_rows(results, include_calibration=cal),
-            "dpo": lambda: export.dpo_rows(results, margin=args.margin, include_calibration=cal),
-        }[args.format]()
-    n = export.write_jsonl(rows, out)
-    print(f"wrote {n} {args.format} rows to {out}")
-    return 0
-
-
 CALIBRATION_POLICIES = [
     "oracle",
     "noop",
@@ -587,18 +559,6 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--cutoff", help="YYYY-MM-DD, split metrics before/after to spot contamination")
     p.add_argument("--html")
     p.set_defaults(fn=cmd_report)
-
-    p = sub.add_parser("export", help="tasks to SWE-bench format, episodes to SFT / GRPO / DPO data")
-    p.add_argument("--format", choices=["swebench", "sft", "grpo", "dpo"], required=True)
-    p.add_argument("--tasks", help="tasks.jsonl (swebench)")
-    p.add_argument("--results", help="results.jsonl (sft, grpo, dpo)")
-    p.add_argument("--min-reward", type=float, default=0.5, help="sft: lowest reward kept")
-    p.add_argument("--margin", type=float, default=0.5, help="dpo: smallest chosen/rejected reward gap")
-    p.add_argument(
-        "--include-calibration", action="store_true", help="keep oracle, noop and cheater episodes"
-    )
-    p.add_argument("-o", "--output", required=True)
-    p.set_defaults(fn=cmd_export)
 
     p = sub.add_parser("calibrate", help="red-team the harness: oracle must win, every cheat must lose")
     p.add_argument("--tasks", required=True)
