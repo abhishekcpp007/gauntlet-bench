@@ -1,0 +1,53 @@
+/* Workbench (5): the machine line, then actions and their form, or the jobs. */
+
+WorkbenchScreen #wb-tabs {
+    margin-top: 1;
+}
+
+WorkbenchScreen #wb-main {
+    height: 1fr;
+}
+
+WorkbenchScreen #actions-pane {
+    width: 38;
+}
+
+WorkbenchScreen #action-list {
+    height: auto;
+    max-height: 60%;
+    border: none;
+    background: $surface;
+    padding: 0 1;
+}
+
+WorkbenchScreen #action-list:focus {
+    background-tint: transparent;
+}
+
+WorkbenchScreen ActionAbout {
+    height: 1fr;
+}
+
+WorkbenchScreen #form-pane {
+    width: 1fr;
+}
+
+WorkbenchScreen #forms {
+    height: 1fr;
+}
+
+WorkbenchScreen #jobs-pane {
+    height: 1fr;
+}
+
+WorkbenchScreen.-narrow #actions-pane {
+    width: 26;
+}
+
+WorkbenchScreen.-narrow ActionAbout {
+    display: none;
+}
+
+WorkbenchScreen.-narrow #action-list {
+    max-height: 100%;
+}

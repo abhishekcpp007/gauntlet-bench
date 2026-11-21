@@ -50,12 +50,13 @@ Build a spec
     with `app.open_episode`); return False when there's nothing to open.
 
 Test it
-    Use `tests/tui/workfakes.py`: `ScriptedRunner` records what was submitted and plays back
-    events you script, and `make_machine()` builds a `Machine`. Mount the form alone with
-    `form_app(MyForm())`, fill it with `fill(pilot, ...)` and press `ctrl+r`, then assert on
-    the `JobSpec` it posted and on the error notes it shows. Then open it in the Workbench with
-    `GauntletApp(make_source(), jobs=ScriptedRunner())` and check the confirm step shows your
-    command lines. See `tests/tui/test_form_examples.py`.
+    Use `tests/tui/workfakes.py`. Mount the form alone with `form_app(MyForm())`, set fields
+    with `fill(view, name=value, ...)`, call `view.review()` and assert on the `JobSpec` it
+    returns, or on `row_errors(view)` and the banner when it refuses. Then open it in the
+    Workbench with `GauntletApp(make_source(), jobs=ScriptedRunner())` and check the confirm
+    step shows your command lines. `ScriptedRunner` records what was submitted and plays back
+    the events you script (`start`, `line`, `step`, `finish`), and `make_machine()` builds a
+    `Machine`, say with Docker down. See `tests/tui/test_form_examples.py`.
 
 Don't
     Import harness modules in a form (only the builders), start or watch processes (the runner
