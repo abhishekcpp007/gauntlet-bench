@@ -22,7 +22,7 @@ from textual.scroll_view import ScrollView
 from textual.strip import Strip
 
 from .. import format as fmt
-from ..theme import Look, look_for, solid_color
+from ..theme import UNICODE_GLYPHS, Look, look_for, solid_color
 
 MAX_DIFF_LINES = 5000
 ROW_TINT = 0.14
@@ -198,8 +198,7 @@ class DiffView(ScrollView, can_focus=True):
             rows.insert(0, DiffLine("note", f"Large patch: showing the first {shown} of {total} lines."))
         self._rows = rows
         self._cache.clear()
-        width = max((cell_len(fmt.visible(r.text).expandtabs(fmt.TAB_WIDTH)) for r in rows), default=0)
-        self.virtual_size = Size(width + self._gutter_width() + GUTTER_GAP * 2 + 1, len(rows))
+        self.virtual_size = Size(max((self._row_width(r) for r in rows), default=0), len(rows))
         self.refresh()
 
     @property
@@ -237,6 +236,21 @@ class DiffView(ScrollView, can_focus=True):
         earlier = [i for i in self.file_lines if i < top]
         if earlier:
             self.scroll_to(y=earlier[-1], animate=False)
+
+    def _row_width(self, row: DiffLine) -> int:
+        """How many cells `_render_row` draws for `row`, so the view scrolls sideways only when a
+        line is really wider than the pane."""
+        text = cell_len(fmt.visible(row.text).expandtabs(fmt.TAB_WIDTH))
+        if row.kind == "gap":
+            return 0
+        if row.kind == "note":
+            return GUTTER_GAP + text
+        if row.kind == "file":
+            diff_file = next(f for f in self.diff.files if f.path == row.text)
+            counts = len(f"  +{diff_file.added} -{diff_file.removed}")
+            status = len(f"  {diff_file.status}") if diff_file.status else 0
+            return GUTTER_GAP + len(f"{UNICODE_GLYPHS.bullet} ") + text + counts + status
+        return GUTTER_GAP * 2 + self._gutter_width() * NUMBER_COLUMNS + 1 + len("+ ") + text
 
     def _gutter_width(self) -> int:
         return len(str(self.diff.max_number)) if self.diff.max_number else 1

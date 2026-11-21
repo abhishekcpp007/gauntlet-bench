@@ -110,3 +110,19 @@ def test_files_after_the_first_get_a_blank_line_above_them():
     kinds = [line.kind for line in parse_diff(GOLD_PATCH + TEST_PATCH).lines]
     assert kinds[0] == "file"
     assert kinds[kinds.index("file", 1) - 1] == "gap"
+
+
+async def test_sideways_scrollbar_only_when_a_line_is_wider_than_the_pane():
+    view = DiffView(CHEAT_PATCH)
+    app = WidgetApp(view)
+    async with app.run_test(size=(200, 20)) as pilot:
+        await pilot.pause()
+        drawn = max(len(line.rstrip()) for line in screen_text(app).splitlines())
+        assert view.virtual_size.width == drawn
+        assert not view.show_horizontal_scrollbar
+        await pilot.resize_terminal(drawn, 20)
+        await pilot.pause()
+        assert not view.show_horizontal_scrollbar
+        await pilot.resize_terminal(drawn - 1, 20)
+        await pilot.pause()
+        assert view.show_horizontal_scrollbar
