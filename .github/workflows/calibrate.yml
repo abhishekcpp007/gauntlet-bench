@@ -2,11 +2,11 @@ name: Calibrate
 
 # Every night, red-team the harness on real tasks. A few Gauntlet Live tasks are picked at
 # random (seeded by the date, so each night checks different ones), then the oracle, noop and
-# the whole cheater zoo play them. The run fails if an episode crashes, if the real fix stops
-# resolving, if doing nothing earns more than -1, or if any cheat resolves or earns more than 0.
-# A task whose pinned commit is gone upstream is left out. CI only covers a toy repo; this
-# covers the real dataset, and it catches environment drift too, when a task stops building or
-# passing on its own.
+# the whole cheater zoo play them. The run fails if an episode crashes, or if the real fix stops
+# resolving or scores under 0.9. It also fails if doing nothing earns more than -1, or if any
+# cheat resolves or earns more than 0. A task whose pinned commit is gone upstream is left out.
+# CI only covers a toy repo; this covers the real dataset, and it catches environment drift too,
+# when a task stops building or passing for any other reason.
 
 on:
   schedule:
