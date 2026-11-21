@@ -33,12 +33,8 @@ from gauntlet.harness.policies import PATCH_PREFIX, ClaudePolicy, make_policy
 
 from .jobtypes import ActionInfo, JobSpec, Need, Output, Step
 from .models import Finding, Verdict
-from .workspace import Kind, Workspace, WorkspaceError, check_name
+from .workspace import PRS_FILE, REJECTED_FILE, TASKS_FILE, Kind, Workspace, WorkspaceError, check_name
 
-PRS_FILE = "prs.jsonl"
-TASKS_FILE = "tasks.jsonl"
-REJECTED_FILE = "rejected.jsonl"
-RESULTS_FILE = "results.jsonl"
 ONE_TASK_FILE = "task.jsonl"
 HTML_SUFFIX = ".html"
 

@@ -26,7 +26,7 @@ from gauntlet.harness import __version__
 from gauntlet.harness.cli import CALIBRATION_POLICIES, calibration_violations, rotted_tasks
 from gauntlet.harness.report import solved, summarize
 from gauntlet.harness.runners import runner_for
-from gauntlet.harness.schema import EpisodeResult, GradeResult, HarnessTask, RubricScore, Status
+from gauntlet.harness.schema import EpisodeResult, GradeResult, HarnessTask, Rejected, RubricScore, Status
 
 from .models import (
     Category,
@@ -80,6 +80,7 @@ from .models import (
     Verdict,
     VerdictCounts,
 )
+from .workspace import PRS_FILE, REJECTED_FILE, RUNS_DIR, TASKS_DIR
 
 TASKS_FILE = "tasks.jsonl"
 STATS_FILE = "stats.json"
@@ -91,6 +92,7 @@ RL_DIR = "rl"
 
 DATASET_PREFIX = "gauntlet-"
 SHIPPED_PREFIX = "shipped-"
+WORKSPACE_PREFIX = "workspace/"
 ORACLE = "oracle"
 NOOP = "noop"
 CHEAT_PREFIX = "cheater"
@@ -309,6 +311,7 @@ class _Dataset:
     path: Path
     tasks: list[HarnessTask]
     stats: dict[str, Any] | None
+    from_workspace: bool = False
 
 
 @dataclass
@@ -330,6 +333,7 @@ class _Run:
     by_id: dict[str, _Episode] = field(default_factory=dict)
     summary: RunSummary | None = None
     detail: RunDetail | None = None
+    from_workspace: bool = False
 
     @property
     def full(self) -> bool:
@@ -344,6 +348,12 @@ class Store:
     is a run folder with a `results.jsonl`. A dataset's `validation.jsonl` becomes a run of its
     own, `shipped-<dataset id>`. A file that's missing or broken is skipped and named in
     `overview().warnings`; the load itself never fails on bad data.
+
+    With a `workspace`, each `tasks/<name>/tasks.jsonl` in it is a dataset too, with the id
+    `workspace/<name>` (a shipped id never has a slash) and its `rejected.jsonl` as its funnel,
+    and each `runs/<name>/` is a run with the same kind of id. Both are marked
+    `from_workspace`. A folder a job is still writing is skipped with a warning. `reload()`
+    loads everything again from the same places.
     """
 
     def __init__(self) -> None:
@@ -355,15 +365,28 @@ class Store:
         self._classes: dict[str, dict[str, TestClass]] = {}
         self._trajectories: dict[tuple[str, str], Trajectory | None] = {}
         self._reference: Reference | None = None
+        self._sources: tuple[Path | None, tuple[Path, ...], Path | None] = (None, (), None)
 
     @classmethod
-    def load(cls, datasets_root: Path | None, run_dirs: Sequence[Path] = ()) -> Store:
+    def load(
+        cls, datasets_root: Path | None, run_dirs: Sequence[Path] = (), workspace: Path | None = None
+    ) -> Store:
         store = cls()
+        store._sources = (datasets_root, tuple(run_dirs), workspace)
         if datasets_root is not None:
             store._load_datasets(Path(datasets_root))
+        if workspace is not None:
+            store._load_workspace_tasks(Path(workspace))
         for path in run_dirs:
             store._load_run_dir(Path(path))
+        if workspace is not None:
+            store._load_workspace_runs(Path(workspace))
         return store
+
+    def reload(self) -> Store:
+        """A fresh `Store` loaded from the same places, so a finished job's output shows up."""
+        datasets_root, run_dirs, workspace = self._sources
+        return Store.load(datasets_root, run_dirs, workspace)
 
     # ------------------------------------------------------------------ loading
 
@@ -395,6 +418,51 @@ class Store:
                 )
                 self._load_episodes(run, folder / VALIDATION_FILE)
                 self._runs[run.id] = run
+
+    def _workspace_folders(self, root: Path, kind: str, wanted: str) -> list[Path]:
+        folder = root / kind
+        if not folder.is_dir():
+            return []
+        ready = []
+        for path in sorted(p for p in folder.iterdir() if p.is_dir()):
+            if (path / wanted).is_file():
+                ready.append(path)
+            elif any(path.iterdir()):
+                self._warn(f"Skipped {path}: it has no {wanted} yet. A job may still be writing it.")
+        return ready
+
+    def _load_workspace_tasks(self, root: Path) -> None:
+        for folder in self._workspace_folders(root, TASKS_DIR, TASKS_FILE):
+            dataset_id = self._unique(WORKSPACE_PREFIX + folder.name, self._datasets)
+            self._datasets[dataset_id] = _Dataset(
+                id=dataset_id,
+                title=f"{folder.name} (workspace)",
+                path=folder,
+                tasks=self._load_tasks(folder / TASKS_FILE, dataset_id),
+                stats=self._workspace_funnel(folder),
+                from_workspace=True,
+            )
+
+    def _workspace_funnel(self, folder: Path) -> dict[str, Any] | None:
+        """The same shape as a shipped `stats.json`, from `prs.jsonl` and `rejected.jsonl`."""
+        prs, rejected = folder / PRS_FILE, folder / REJECTED_FILE
+        if not rejected.is_file() and not prs.is_file():
+            return None
+        stages: Counter[str] = Counter()
+        if rejected.is_file():
+            for n, line in _read_lines(rejected, self._warn):
+                try:
+                    stages[Rejected.model_validate_json(line).stage] += 1
+                except ValidationError as e:
+                    self._warn(f"Skipped line {n} of {rejected}: it isn't a rejection ({_short(e)}).")
+        stats: dict[str, Any] = {"rejected_by_stage": dict(stages)}
+        if prs.is_file():
+            stats["prs_collected"] = len(_read_lines(prs, self._warn))
+        return stats
+
+    def _load_workspace_runs(self, root: Path) -> None:
+        for folder in self._workspace_folders(root, RUNS_DIR, RESULTS_FILE):
+            self._load_run_dir(folder, run_id=WORKSPACE_PREFIX + folder.name, from_workspace=True)
 
     def _title(self, folder: Path) -> str:
         readme = folder / README_FILE
@@ -434,17 +502,22 @@ class Store:
             tasks.append(task)
         return tasks
 
-    def _load_run_dir(self, path: Path) -> None:
+    def _load_run_dir(self, path: Path, *, run_id: str | None = None, from_workspace: bool = False) -> None:
         results = path / RESULTS_FILE
         if not results.is_file():
             self._warn(f"Skipped {path}: it has no {RESULTS_FILE}.")
             return
         run = _Run(
-            id=self._unique(_slug(path.name), self._runs, fallback=_slug(f"{path.parent.name}-{path.name}")),
-            title=path.name,
+            id=self._unique(run_id, self._runs)
+            if run_id
+            else self._unique(
+                _slug(path.name), self._runs, fallback=_slug(f"{path.parent.name}-{path.name}")
+            ),
+            title=f"{path.name} (workspace)" if from_workspace else path.name,
             kind="folder",
             path=path,
             dataset_id=None,
+            from_workspace=from_workspace,
         )
         self._load_episodes(run, results)
         homes = {self._tasks[e.row.instance_id][1] for e in run.episodes if e.row.instance_id in self._tasks}
@@ -645,6 +718,7 @@ class Store:
             p2p_total=sum(r.p2p for r in rows),
             leakcheck_ok=sum(1 for r in rows if r.leakcheck_ok),
             has_validation=(dataset.path / VALIDATION_FILE).is_file(),
+            from_workspace=dataset.from_workspace,
         )
 
     def dataset(self, dataset_id: str) -> DatasetDetail:
@@ -757,6 +831,7 @@ class Store:
                 noop=_group([e for e in episodes if e.row.policy_kind == "noop"]),
                 cheats=_group([e for e in episodes if e.row.policy_kind == "cheat"]),
                 violations=len(self._violations(run)) if run.full else None,
+                from_workspace=run.from_workspace,
             )
         return run.summary
 

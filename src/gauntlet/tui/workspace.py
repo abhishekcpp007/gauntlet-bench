@@ -23,6 +23,10 @@ REPORTS_DIR = "reports"
 JOBS_DIR = "jobs"
 DATASETS_DIR = "datasets"
 DEFAULT_WORKSPACE = "gauntlet-work"
+PRS_FILE = "prs.jsonl"
+TASKS_FILE = "tasks.jsonl"
+REJECTED_FILE = "rejected.jsonl"
+RESULTS_FILE = "results.jsonl"
 
 STAMP_FORMAT = "%Y%m%d-%H%M%S"
 SLUG_MAX = 40

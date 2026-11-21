@@ -62,6 +62,7 @@ class DatasetSummary:
     p2p_total: int
     leakcheck_ok: int
     has_validation: bool
+    from_workspace: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -226,6 +227,7 @@ class RunSummary:
     noop: PolicyGroup | None = None
     cheats: PolicyGroup | None = None
     violations: int | None = None
+    from_workspace: bool = False
 
 
 @dataclass(frozen=True, slots=True)
