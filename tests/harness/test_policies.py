@@ -58,6 +58,12 @@ def test_make_policy():
         make_policy("gpt-9")
 
 
+def test_make_policy_rejects_openai_like_any_unknown_spec():
+    for spec in ("openai", "openai:gpt-5.1"):
+        with pytest.raises(ValueError, match="unknown policy"):
+            make_policy(spec)
+
+
 def test_oracle_applies_gold_and_submits():
     env = FakeEnv(gold="diff --git a/x.py b/x.py\n+fixed\n")
     OraclePolicy().run(env)
