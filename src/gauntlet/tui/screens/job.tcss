@@ -27,3 +27,12 @@ JobScreen Outputs {
 TextFileScreen #body {
     padding: 0;
 }
+
+JobScreen #job-outcome {
+    height: auto;
+    max-height: 12;
+}
+
+JobScreen.-short #job-outcome {
+    max-height: 6;
+}

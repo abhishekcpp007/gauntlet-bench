@@ -11,7 +11,8 @@ passed on as absolute paths, so the command means the same thing from any folder
 `ACTIONS` lists the actions in the order the Workbench shows them. `list_ranges` is the first
 half of "From a release range", so it isn't in that list. Two jobs answer in their log rather
 than in a file: `parse_ranges` reads what `list_ranges` printed, and `parse_scan` reads what
-"Scan a patch" printed.
+"Scan a patch" printed. `read_outcome` reads a finished scan's report, or how many problems a
+check found, from its log.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ from gauntlet.harness.budget import parse_prices
 from gauntlet.harness.cli import CALIBRATION_POLICIES
 from gauntlet.harness.policies import PATCH_PREFIX, ClaudePolicy, make_policy
 
-from .jobtypes import ActionInfo, JobSpec, Need, Output, Step
+from .jobtypes import ActionInfo, JobRecord, JobSpec, Need, Output, Step
 from .models import Finding, Verdict
 from .store import CHEAT_PREFIX, LEAK_CHECKS
 from .workspace import PRS_FILE, REJECTED_FILE, TASKS_FILE, Kind, Workspace, WorkspaceError, check_name
@@ -81,6 +82,12 @@ CHEAT_COUNT = sum(p.startswith(CHEAT_PREFIX) for p in CALIBRATION_POLICIES)
 
 SANDBOX: tuple[Need, ...] = ("docker", "network")
 NETWORK: tuple[Need, ...] = ("network",)
+
+
+FOUND_A_PROBLEM = 1
+FINDING_MARKERS: dict[str, str] = {"leakcheck": "LEAK ", "check_envs": "DRIFT ", "calibrate": "VIOLATION "}
+"""The checks that exit 1 when they find a problem, and how each marks a problem in its output.
+A crash exits 1 too, so a problem is only counted where its marker line is printed."""
 
 
 class ActionError(ValueError):
@@ -779,3 +786,27 @@ def report(
         outputs=(Output("report", str(page), "HTML report"),) if page else (),
         exclusive=False,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class Outcome:
+    """What a finished job's log says beyond its exit code: a scan's report, or how many problems
+    a check found. `scan_error` says why a scan's report couldn't be read."""
+
+    scan: ScanResult | None = None
+    scan_error: str | None = None
+    found: int = 0
+
+
+def read_outcome(record: JobRecord, lines: Sequence[str]) -> Outcome | None:
+    """The outcome of a finished scan or check, from its whole log. None for other jobs."""
+    if record.spec.action == "scan_patch" and record.state == "succeeded":
+        try:
+            return Outcome(scan=parse_scan("\n".join(lines)))
+        except ActionError as e:
+            return Outcome(scan_error=str(e))
+    marker = FINDING_MARKERS.get(record.spec.action)
+    if marker is not None and record.state == "failed" and record.exit_code == FOUND_A_PROBLEM:
+        found = sum(line.startswith(marker) for line in lines)
+        return Outcome(found=found) if found else None
+    return None

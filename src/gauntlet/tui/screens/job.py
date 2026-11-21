@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import ClassVar
 
@@ -29,7 +30,9 @@ from textual.widgets.option_list import Option
 from textual.worker import Worker, WorkerState
 
 from .. import format as fmt
-from ..jobtypes import FINISHED, JobEvent, JobRecord, Output, Stream
+from ..actions import Outcome, read_outcome
+from ..jobtypes import FINISHED, JobEvent, JobRecord, LogLine, Output, Stream
+from ..theme import FOUND
 from ..widgets.joblog import LOG_WINDOW, JobLog, LogLines
 from ..widgets.jobstatus import (
     ACTIVE,
@@ -40,14 +43,15 @@ from ..widgets.jobstatus import (
     result_line,
     step_line,
 )
+from ..widgets.outcome import OutcomeView
 from ..widgets.states import ErrorState, describe_error
 from ..widgets.themed import Themed
-from ..workbench.base import form_for
 from .base import GauntletScreen
 from .confirm import ConfirmPrompt
 
 PROMPT = "$ "
 LOAD_GROUP = "job-load"
+OUTCOME_GROUP = "job-outcome"
 SHORT_HEIGHT = 30
 KIND_WIDTH = 10
 CANCEL_DETAIL = "The harness gets an interrupt first so it can close its sandboxes, then a kill if it hangs."
@@ -65,13 +69,13 @@ OUTPUT_KINDS = {
 @dataclass(frozen=True, slots=True)
 class JobData:
     record: JobRecord
-    lines: tuple[str, ...]
+    lines: tuple[LogLine, ...]
     earlier: bool
 
 
 class JobHeader(Themed):
     """`✓ succeeded  Calibrate live` with the elapsed time, then the step or the result, then where
-    the full log is."""
+    the full log is. A check that found problems shows `▲ found something`, not `✗ failed`."""
 
     DEFAULT_CSS = """
     JobHeader {
@@ -85,9 +89,11 @@ class JobHeader(Themed):
         super().__init__()
         self.record: JobRecord | None = None
         self.frame = 0
+        self.found = 0
 
-    def show(self, record: JobRecord) -> None:
+    def show(self, record: JobRecord, *, found: int = 0) -> None:
         self.record = record
+        self.found = found or self.found
         self.refresh(layout=True)
 
     def tick(self) -> None:
@@ -102,7 +108,8 @@ class JobHeader(Themed):
         grid = Table.grid(expand=True)
         grid.add_column(ratio=1, no_wrap=True, overflow=look.overflow)
         grid.add_column(justify="right", no_wrap=True)
-        title = Text.assemble(job_mark(look, record.state, frame=self.frame), "  ")
+        mark = look.mark(FOUND) if self.found else job_mark(look, record.state, frame=self.frame)
+        title = Text.assemble(mark, "  ")
         title.append_text(fmt.safe_text(record.spec.title, single_line=True, style="bold"))
         took = elapsed(record)
         grid.add_row(title, Text(fmt.duration(took) if took is not None else "not started", end=""))
@@ -194,6 +201,8 @@ class JobScreen(GauntletScreen):
         self.record: JobRecord | None = None
         self.loaded = False
         self.buffered: list[JobEvent] = []
+        self.outcome_read = False
+        self.outcome: Outcome | None = None
         self._ticker: Timer | None = None
 
     def compose_body(self) -> ComposeResult:
@@ -203,6 +212,10 @@ class JobScreen(GauntletScreen):
             commands.border_title = "Commands"
             commands.border_subtitle = "c copies"
             yield commands
+            result = VerticalScroll(OutcomeView(), id="job-outcome", classes="pane")
+            result.border_title = "Result"
+            result.display = False
+            yield result
             log = Vertical(JobLog(), id="job-log", classes="pane")
             log.border_title = "Log"
             yield log
@@ -231,7 +244,7 @@ class JobScreen(GauntletScreen):
         if jobs is None:
             raise LookupError("the Workbench isn't on")
         record = jobs.job(self.job_id)
-        lines = jobs.log(self.job_id, tail=LOG_WINDOW + 1)
+        lines = jobs.log_lines(self.job_id, tail=LOG_WINDOW + 1)
         return JobData(record, tuple(lines[-LOG_WINDOW:]), len(lines) > LOG_WINDOW)
 
     @property
@@ -239,6 +252,10 @@ class JobScreen(GauntletScreen):
         return self.query_one(JobLog)
 
     def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        if event.worker.group == OUTCOME_GROUP:
+            if event.state == WorkerState.SUCCESS and isinstance(event.worker.result, Outcome):
+                self.show_outcome(event.worker.result)
+            return
         if event.worker.group != LOAD_GROUP:
             return
         if event.state == WorkerState.SUCCESS and isinstance(event.worker.result, JobData):
@@ -252,12 +269,12 @@ class JobScreen(GauntletScreen):
         self.gauntlet.flush_jobs()
         log = self.job_log
         log.set_log_path(data.record.log_path)
-        log.write(((line, None) for line in data.lines), earlier=data.earlier)
+        log.write(((line.text, line.stream) for line in data.lines), earlier=data.earlier)
         self.loaded = True
         self.show(data.record)
         pending, self.buffered = self.buffered, []
         fresh = [e.text for e in pending if e.kind == "line"]
-        skip = overlap(data.lines, fresh)
+        skip = overlap([line.text for line in data.lines], fresh)
         for event in pending:
             if event.kind == "line" and skip:
                 skip -= 1
@@ -290,6 +307,11 @@ class JobScreen(GauntletScreen):
         self.query_one(JobHeader).show(record)
         self.query_one(Commands).show(record)
         finished = record.state in FINISHED
+        if finished and not self.outcome_read:
+            self.outcome_read = True
+            self.run_worker(
+                partial(self.read_outcome, record), thread=True, group=OUTCOME_GROUP, exit_on_error=False
+            )
         outputs = self.query_one(Outputs)
         pane = self.query_one("#job-outputs")
         if finished and record.spec.outputs and not pane.display:
@@ -304,6 +326,17 @@ class JobScreen(GauntletScreen):
                 self._ticker.pause()
         self.update_log_title()
         self.refresh_bindings()
+
+    def read_outcome(self, record: JobRecord) -> Outcome | None:
+        jobs = self.gauntlet.jobs
+        return None if jobs is None else read_outcome(record, jobs.log(record.id))
+
+    def show_outcome(self, outcome: Outcome) -> None:
+        self.outcome = outcome
+        self.query_one(OutcomeView).show(outcome, self.record.spec.action if self.record else "")
+        self.query_one("#job-outcome").display = True
+        if self.record is not None:
+            self.query_one(JobHeader).show(self.record, found=outcome.found)
 
     def _tick(self) -> None:
         self.query_one(JobHeader).tick()
@@ -379,7 +412,7 @@ class JobScreen(GauntletScreen):
         if outputs.has_focus and outputs.highlighted is not None:
             self.gauntlet.open_output(record.spec.outputs[outputs.highlighted])
             return
-        form = form_for(record.spec.action, self.gauntlet.actions)
+        form = self.gauntlet.forms.get(record.spec.action)
         if record.state == "succeeded" and form is not None and form().after(record, self.gauntlet):
             return
         self.gauntlet.open_output(record.spec.outputs[0])
