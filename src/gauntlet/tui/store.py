@@ -40,6 +40,7 @@ from .models import (
     Facet,
     Finding,
     GradeDetail,
+    HitKind,
     HorizonDetail,
     HorizonSummary,
     Interval,
@@ -102,6 +103,9 @@ OUTPUT_LIMIT = 50_000
 TEST_CLASSES: tuple[TestClass, ...] = ("f2p", "n2p", "s2p", "p2p")
 STATUS_NAMES: frozenset[str] = frozenset(s.value for s in Status)
 VERDICTS: tuple[Verdict, ...] = ("clean", "suspicious", "cheating")
+HIT_ORDER: tuple[HitKind, ...] = ("dataset", "task", "run", "episode")
+FIRST_DUPLICATE = 2
+HEADER_LINES = 1
 SLIM_REQUIRED = ("episode_id", "instance_id", "policy", "reward", "cheat_verdict", "resolved")
 
 PROBE_ID = "threshold-probe"
@@ -532,7 +536,7 @@ class Store:
         for candidate in (wanted, fallback):
             if candidate and candidate not in taken:
                 return candidate
-        n = 2
+        n = FIRST_DUPLICATE
         while f"{wanted}-{n}" in taken:
             n += 1
         return f"{wanted}-{n}"
@@ -916,7 +920,7 @@ class Store:
                 lines = sum(1 for line in f if line.strip())
         except OSError:
             return None
-        return max(0, lines - 1)
+        return max(0, lines - HEADER_LINES)
 
     def _prompt(self, run: _Run, episode_id: str) -> str | None:
         files = self._files(run, episode_id)
@@ -950,14 +954,13 @@ class Store:
             return ()
         scored: list[tuple[int, int, str, SearchHit]] = []
 
-        def offer(order: int, hit: SearchHit, *values: str) -> None:
+        def offer(hit: SearchHit, *values: str) -> None:
             ranks = [m for v in values if (m := _match(q, v)) is not None]
             if ranks:
-                scored.append((min(ranks), order, hit.id, hit))
+                scored.append((min(ranks), HIT_ORDER.index(hit.kind), hit.id, hit))
 
         for d in self._datasets.values():
             offer(
-                0,
                 SearchHit(kind="dataset", id=d.id, title=d.title, subtitle=f"{len(d.tasks)} tasks"),
                 d.id,
                 d.title,
@@ -966,14 +969,10 @@ class Store:
             hit = SearchHit(
                 kind="task", id=r.instance_id, title=r.instance_id, subtitle=f"{r.repo} · {r.dataset_id}"
             )
-            offer(1, hit, r.instance_id, r.repo)
+            offer(hit, r.instance_id, r.repo)
         for run in self._runs.values():
-            offer(
-                2,
-                SearchHit(kind="run", id=run.id, title=run.title, subtitle=f"{len(run.episodes)} episodes"),
-                run.id,
-                run.title,
-            )
+            subtitle = f"{len(run.episodes)} episodes"
+            offer(SearchHit(kind="run", id=run.id, title=run.title, subtitle=subtitle), run.id, run.title)
             for e in run.episodes:
                 hit = SearchHit(
                     kind="episode",
@@ -982,9 +981,9 @@ class Store:
                     subtitle=f"{e.row.policy} · {run.title}",
                     run_id=run.id,
                 )
-                offer(3, hit, e.row.episode_id)
-        scored.sort(key=lambda s: s[:3])
-        return tuple(s[3] for s in scored[:limit])
+                offer(hit, e.row.episode_id)
+        scored.sort(key=lambda s: (s[0], s[1], s[2]))
+        return tuple(hit for *_, hit in scored[:limit])
 
 
 def _match(query: str, value: str) -> int | None:
