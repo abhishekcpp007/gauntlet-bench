@@ -5,6 +5,7 @@ gauntlet build    --prs prs.jsonl -o tasks.jsonl
 gauntlet leakcheck --tasks tasks.jsonl
 gauntlet run      --tasks tasks.jsonl --policies oracle,noop,claude:claude-opus-5-5 --attempts 3 -o runs/
 gauntlet report   --results runs/results.jsonl --cutoff 2026-06-01
+gauntlet cheatcatcher scan --trajectory run.jsonl --patch fix.diff
 """
 
 from __future__ import annotations
@@ -546,7 +547,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("-o", "--output", default="calibration")
     p.set_defaults(fn=cmd_calibrate)
 
-    args = parser.parse_args(argv)
+    sub.add_parser("cheatcatcher", help="scan a trajectory or patch for cheating", add_help=False)
+
+    args, rest = parser.parse_known_args(argv)
+    if args.cmd == "cheatcatcher":
+        from gauntlet.cheatcatcher.cli import main as cheatcatcher
+
+        return cheatcatcher(rest)
+    if rest:
+        parser.error(f"unrecognized arguments: {' '.join(rest)}")
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
     return args.fn(args)
 

@@ -1,4 +1,4 @@
-"""Command line: `cheatcatcher scan --trajectory run.jsonl --patch fix.diff`."""
+"""Command line: `gauntlet cheatcatcher scan --trajectory run.jsonl --patch fix.diff`."""
 
 from __future__ import annotations
 
@@ -36,12 +36,12 @@ def cmd_rules(_: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="cheatcatcher", description=__doc__)
+    parser = argparse.ArgumentParser(prog="gauntlet cheatcatcher", description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("scan", help="scan a trajectory and/or patch (exit 0 clean, 1 suspicious, 2 cheating)")
-    p.add_argument("--trajectory", help="gauntlet-sandbox trajectory JSONL")
+    p.add_argument("--trajectory", help="sandbox trajectory JSONL")
     p.add_argument("--patch", help="unified diff file, or - for stdin")
     p.add_argument("--protect", nargs="*", default=[], metavar="PATH", help="test files the grader owns")
     p.add_argument("--json", action="store_true", help="print JSON instead of markdown")
