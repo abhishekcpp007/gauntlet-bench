@@ -18,13 +18,11 @@ from textual.widgets import Button
 
 from .. import format as fmt
 from ..jobtypes import JobSpec, Machine
-from ..theme import PASSED, WARNING, Look, Mark
+from ..theme import NEED_MISSING, NEED_UNCHECKED, PASSED, WARNING, Look
 from ..widgets.jobstatus import command_line, disk_size
 from ..widgets.themed import Themed
 from ..workbench.base import check_needs
 
-MISSING_NEED = Mark("✗", "x", "missing", "bad")
-UNCHECKED_NEED = Mark("?", "?", "not checked", "muted")
 LABEL_GAP = 2
 PROMPT = "$ "
 
@@ -45,7 +43,7 @@ def plan_lines(spec: JobSpec, machine: Machine | None, *, waits: bool, look: Loo
     if spec.needs:
         checks = check_needs(spec.needs, machine) if machine is not None else ()
         for index, check in enumerate(checks):
-            mark = PASSED if check.met else UNCHECKED_NEED if check.met is None else MISSING_NEED
+            mark = PASSED if check.met else NEED_UNCHECKED if check.met is None else NEED_MISSING
             line = Text.assemble(look.mark(mark, word=False), (f" {check.label}", "bold"))
             line.append_text(look.muted(f"  {check.detail}"))
             grid.add_row(look.muted("Needs" if index == 0 else ""), line)

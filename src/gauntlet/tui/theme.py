@@ -1,6 +1,7 @@
 """The viewer's two themes and its status vocabulary, in one place.
 
-Every status the viewer shows (a verdict, resolved or not, a severity, a leak check) is a `Mark`:
+Every status the viewer shows (a verdict, resolved or not, a severity, a leak check, a job's
+state) is a `Mark`:
 a symbol, a word and a tone. Colour only ever adds to the symbol and the word, so the screen still
 reads with `NO_COLOR=1`. A `Look` turns marks and rewards into styled `Text` for the active theme,
 with either the Unicode or the ASCII symbol set. Widgets get one with `look_for(self)` and never
@@ -19,6 +20,7 @@ from textual.dom import DOMNode
 from textual.theme import Theme
 
 from . import format as fmt
+from .jobtypes import JobState
 from .models import Severity, Verdict
 
 Tone = Literal["good", "warn", "bad", "muted", "plain", "accent"]
@@ -135,6 +137,19 @@ ERROR = Mark("!", "!", "error", "bad")
 WARNING = Mark("▲", "^", "warning", "warn")
 NOT_PLAYED = Mark("·", ".", "not played", "muted")
 SUMMARY_ONLY = Mark("◌", "-", "summary", "muted")
+JOB_STATES: dict[JobState, Mark] = {
+    "queued": Mark("◌", "-", "queued", "muted"),
+    "running": Mark("●", "*", "running", "accent"),
+    "succeeded": Mark("✓", "+", "succeeded", "good"),
+    "failed": Mark("✗", "x", "failed", "bad"),
+    "cancelled": Mark("⊘", "/", "cancelled", "muted"),
+}
+FOUND = Mark("▲", "^", "found something", "warn")
+NO_FORM = Mark("◌", "-", "not available yet", "muted")
+KEY_SET = Mark("✓", "+", "Anthropic key set", "good")
+NO_KEY = Mark("✗", "x", "no Anthropic key", "muted")
+NEED_MISSING = Mark("✗", "x", "missing", "bad")
+NEED_UNCHECKED = Mark("?", "?", "not checked", "muted")
 
 
 def resolved_mark(resolved: bool) -> Mark:

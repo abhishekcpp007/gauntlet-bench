@@ -1,8 +1,7 @@
-"""`JobStatus`, and the words and marks the Workbench uses for jobs and the machine.
+"""`JobStatus`, and the words the Workbench uses for jobs and the machine.
 
-`theme.py` keeps its marks as module constants with no way to add more, so the job states live
-here as `Mark`s in the same vocabulary: running is the accent with a spinner, succeeded a green
-check, failed a red cross, cancelled and queued dim. Colour is never the only signal.
+A job's state is a mark from `theme.JOB_STATES`: running is the accent with a spinner, succeeded
+a green check, failed a red cross, cancelled and queued dim. Colour is never the only signal.
 """
 
 from __future__ import annotations
@@ -17,16 +16,9 @@ from textual.timer import Timer
 
 from .. import format as fmt
 from ..jobtypes import FINISHED, JobRecord, JobState, Step
-from ..theme import Look, Mark
+from ..theme import JOB_STATES, Look
 from .themed import Themed
 
-JOB_MARKS: dict[JobState, Mark] = {
-    "queued": Mark("◌", "-", "queued", "muted"),
-    "running": Mark("●", "*", "running", "accent"),
-    "succeeded": Mark("✓", "+", "succeeded", "good"),
-    "failed": Mark("✗", "x", "failed", "bad"),
-    "cancelled": Mark("⊘", "/", "cancelled", "muted"),
-}
 ACTIVE: frozenset[JobState] = frozenset({"queued", "running"})
 SPINNER_FPS = 8
 BYTES_PER_UNIT = 1024
@@ -38,7 +30,7 @@ PROGRAM = "gauntlet"
 
 def job_mark(look: Look, state: JobState, *, frame: int | None = None, word: bool = True) -> Text:
     """The state as symbol and word. A running job shows spinner frame `frame` when one is given."""
-    mark = JOB_MARKS[state]
+    mark = JOB_STATES[state]
     if state == "running" and frame is not None:
         frames = look.glyphs.spinner
         text = Text(frames[frame % len(frames)], style=look.style(mark.tone), end="")
