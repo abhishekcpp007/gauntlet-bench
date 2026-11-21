@@ -116,3 +116,17 @@ def test_a_listener_that_raises_is_recorded_and_the_rest_still_hear():
     unsubscribe()
     runner.run_until_idle()
     assert len(heard) == 1 and runner.listener_errors
+
+
+def test_log_lines_keep_each_lines_stream():
+    runner = FakeJobRunner()
+    runner.script("scan_patch", ["clean", ("warned", "err")])
+    record = runner.submit(JobSpec(action="scan_patch", title="Scan", steps=(Step("Scan", ("rules",)),)))
+    runner.run_until_idle()
+    assert [(line.text, line.stream) for line in runner.log_lines(record.id)] == [
+        ("clean", "out"),
+        ("warned", "err"),
+    ]
+    assert [line.text for line in runner.log_lines(record.id, tail=1)] == ["warned"]
+    seeded = runner.seed(record.spec, lines=["a", ("b", "err")])
+    assert [line.stream for line in runner.log_lines(seeded.id)] == ["out", "err"]

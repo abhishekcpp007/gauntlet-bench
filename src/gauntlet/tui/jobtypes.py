@@ -103,6 +103,15 @@ class ActionInfo:
 
 
 @dataclass(frozen=True, slots=True)
+class LogLine:
+    """One line of a job's log and where it came from: `out`, `err`, or None for a note the
+    runner wrote itself (or a log from before streams were recorded)."""
+
+    text: str
+    stream: Stream | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Machine:
     """What the Workbench checks before it offers to start a job."""
 
@@ -136,6 +145,8 @@ class JobRunner(Protocol):
     def job(self, job_id: str) -> JobRecord: ...
 
     def log(self, job_id: str, *, tail: int | None = None) -> tuple[str, ...]: ...
+
+    def log_lines(self, job_id: str, *, tail: int | None = None) -> tuple[LogLine, ...]: ...
 
     def subscribe(self, listener: Listener) -> Unsubscribe: ...
 

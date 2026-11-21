@@ -409,3 +409,37 @@ def test_the_real_process_starts_its_own_group(tmp_path):
     )
     assert proc.stdout.read().strip() == b"True"
     assert proc.wait(WAIT_SECONDS) == 0
+
+
+def test_log_lines_say_which_stream_each_line_came_from(make, tmp_path):
+    factory = Factory(FakeProcess("one\ntwo\n", "warn\n"))
+    runner = make(factory, clock=lambda: NOW)
+    record = runner.submit(spec())
+    finished(runner, record.id)
+    lines = runner.log_lines(record.id)
+    assert sorted((line.text, line.stream) for line in lines) == [
+        ("one", "out"),
+        ("two", "out"),
+        ("warn", "err"),
+    ]
+    assert [line.text for line in lines] == list(runner.log(record.id))
+    assert runner.log_lines(record.id, tail=1) == lines[-1:]
+    again = make(Factory(), clock=lambda: NOW)
+    assert again.log_lines(record.id) == lines
+
+
+def test_a_log_from_before_streams_were_recorded_has_no_stream(make):
+    runner = make(Factory(FakeProcess("old\n")), clock=lambda: NOW)
+    record = runner.submit(spec())
+    done = finished(runner, record.id)
+    (Path(done.log_path).parent / jobs_module.STREAMS_FILE).unlink()
+    assert [(line.text, line.stream) for line in runner.log_lines(record.id)] == [("old", None)]
+
+
+def test_tail_streams_pads_missing_letters(tmp_path):
+    path = tmp_path / jobs_module.STREAMS_FILE
+    assert jobs_module.tail_streams(path, TAIL) == "-" * TAIL
+    path.write_text("oe")
+    assert jobs_module.tail_streams(path, TAIL) == "---oe"
+    assert jobs_module.tail_streams(path, 1) == "e"
+    assert jobs_module.tail_streams(path, 0) == ""

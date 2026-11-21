@@ -6,8 +6,10 @@ environment plus `PYTHONUNBUFFERED=1`, and the workspace as its working folder. 
 stderr are read line by line on two threads, and every line goes to the job's log file and to
 listeners as a `line` event.
 
-    jobs/<id>/job.json   the record, replaced atomically on every change
-    jobs/<id>/log.txt    every line the job printed, as it printed it
+    jobs/<id>/job.json     the record, replaced atomically on every change
+    jobs/<id>/log.txt      every line the job printed, as it printed it
+    jobs/<id>/log.streams  one letter per line of log.txt: o for stdout, e for stderr, - for a
+                           note from the runner, so `log_lines` can say where each line came from
 
 Exclusive jobs (the ones that use Docker) run one at a time in the order they came in. Others
 start at once. Cancel takes a queued job off the queue. A running one gets an interrupt, so the
@@ -38,7 +40,7 @@ import threading
 import time
 from collections import deque
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from dataclasses import asdict, replace
 from itertools import count
 from pathlib import Path
@@ -55,6 +57,7 @@ from .jobtypes import (
     JobSpec,
     JobState,
     Listener,
+    LogLine,
     Machine,
     Output,
     Step,
@@ -69,6 +72,10 @@ log = logging.getLogger(__name__)
 HARNESS_MODULE = "gauntlet.harness.cli"
 JOB_FILE = "job.json"
 LOG_FILE = "log.txt"
+STREAMS_FILE = "log.streams"
+STREAM_CODES: dict[Stream | None, str] = {"out": "o", "err": "e", None: "-"}
+STREAM_NAMES: dict[str, Stream | None] = {code: stream for stream, code in STREAM_CODES.items()}
+NO_STREAM = STREAM_CODES[None]
 LOG_ENCODING = "utf-8"
 INTERRUPT_GRACE_SECONDS = 20.0
 TERMINATE_GRACE_SECONDS = 10.0
@@ -258,24 +265,45 @@ def tail_lines(path: Path, n: int) -> tuple[str, ...]:
     return tuple(lines[-n:])
 
 
+def tail_streams(path: Path, n: int) -> str:
+    """The stream letters for the last `n` log lines. Lines with no letter, from a log written
+    before streams were recorded, get `NO_STREAM`."""
+    if n <= 0:
+        return ""
+    codes = ""
+    if path.is_file():
+        with path.open("rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(max(size - n, 0))
+            codes = f.read().decode(LOG_ENCODING, errors="replace")
+    return codes.rjust(n, NO_STREAM)[-n:]
+
+
 class _JobLog:
-    """The job's log file, shared by its reader threads."""
+    """The job's log file and its stream letters, shared by its reader threads. Hold `lock` to
+    read both while they agree."""
 
     def __init__(self, path: Path) -> None:
-        self._lock = threading.Lock()
+        self.lock = threading.Lock()
         self._file: IO[str] | None = path.open("a", encoding=LOG_ENCODING, errors="replace")
+        self._streams: IO[str] | None = path.with_name(STREAMS_FILE).open("a", encoding=LOG_ENCODING)
 
-    def write(self, line: str) -> None:
-        with self._lock:
-            if self._file is not None:
+    def write(self, line: str, stream: Stream | None) -> None:
+        with self.lock:
+            if self._file is not None and self._streams is not None:
                 self._file.write(line + "\n")
+                self._streams.write(STREAM_CODES[stream])
                 self._file.flush()
+                self._streams.flush()
 
     def close(self) -> None:
-        with self._lock:
-            if self._file is not None:
-                self._file.close()
-                self._file = None
+        with self.lock:
+            for handle in (self._file, self._streams):
+                if handle is not None:
+                    handle.close()
+            self._file = None
+            self._streams = None
 
 
 class SubprocessJobRunner:
@@ -382,6 +410,15 @@ class SubprocessJobRunner:
             return ()
         return tuple(path.read_text(encoding=LOG_ENCODING, errors="replace").splitlines())
 
+    def log_lines(self, job_id: str, *, tail: int | None = None) -> tuple[LogLine, ...]:
+        """Like `log`, with where each line came from."""
+        with self._lock:
+            job_log = self._logs.get(job_id)
+        with job_log.lock if job_log is not None else nullcontext():
+            texts = self.log(job_id, tail=tail)
+            codes = tail_streams(Path(self.job(job_id).log_path).with_name(STREAMS_FILE), len(texts))
+        return tuple(LogLine(text, STREAM_NAMES.get(code)) for text, code in zip(texts, codes, strict=True))
+
     def subscribe(self, listener: Listener) -> Unsubscribe:
         with self._lock:
             self._listeners.append(listener)
@@ -485,7 +522,7 @@ class SubprocessJobRunner:
             job_log = self._logs.get(job_id)
             record = self._records[job_id]
         if job_log is not None:
-            job_log.write(text)
+            job_log.write(text, stream)
         self._emit(JobEvent("line", record, text=text, stream=stream))
 
     def _read(self, job_id: str, pipe: IO[bytes], stream: Stream) -> None:

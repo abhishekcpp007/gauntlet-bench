@@ -26,19 +26,27 @@ How the fake moves:
   `finish(id, exit_code=..., error=...)`.
 - `cancel(id)` ends a queued or running job as cancelled at once, and remembers the call in
   `cancel_requests`. `close()` sets `closed` and cancels whatever hasn't finished.
-- `seed(spec, state=..., lines=...)` adds a finished job to the history, for list screens.
+- `seed(spec, state=..., lines=...)` adds a finished job to the history, for list screens. A
+  line is a string (stdout) or `(text, stream)`, as in a script.
   `seed(spec, state="failed", error=INTERRUPTED)` looks like a job from a session that closed.
 - `submitted` holds every spec in order, and `machine_info` is what `machine()` returns: set
   it to `fake_machine(docker_running=False)` to test a missing need.
 - Listeners are called in the test's own thread. One that raises is recorded in
   `listener_errors` and doesn't stop the others, like the real runner.
 - The clock starts at `FAKE_START` and moves one second each time it's read.
+
+For form tests: `form_app(form, workspace=...)` mounts one form alone, `fill(view, name=value)`
+sets its fields the way typing or picking would, and `row_errors(view)` gives the error under
+each field. `make_spec(**changes)` is a two step Docker job to run through the fake.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, replace
+from pathlib import Path
+
+from textual.widgets import Input, Select, SelectionList, Switch
 
 from gauntlet.tui.jobs import INTERRUPTED, RunnerClosed, format_job_id
 from gauntlet.tui.jobtypes import (
@@ -50,12 +58,32 @@ from gauntlet.tui.jobtypes import (
     JobSpec,
     JobState,
     Listener,
+    LogLine,
     Machine,
+    Output,
+    Step,
     Stream,
     Unsubscribe,
 )
+from gauntlet.tui.models import DataSource
+from gauntlet.tui.widgets.form import FieldRow, FormView
+from gauntlet.tui.widgets.pickers import PathPicker, Picker
+from gauntlet.tui.workbench.base import ActionForm, action_info
+from gauntlet.tui.workspace import Workspace
 
-__all__ = ["INTERRUPTED", "NEXT_STEP", "FakeJobRunner", "Script", "fake_machine"]
+from .factories import WidgetApp, make_source
+
+__all__ = [
+    "INTERRUPTED",
+    "NEXT_STEP",
+    "FakeJobRunner",
+    "Script",
+    "fake_machine",
+    "fill",
+    "form_app",
+    "make_spec",
+    "row_errors",
+]
 
 FAKE_START = 1_795_000_000.0
 FAKE_TICK = 1.0
@@ -95,6 +123,7 @@ class _Live:
     script: Script
     position: int = 0
     lines: list[str] = field(default_factory=list)
+    streams: list[Stream | None] = field(default_factory=list)
 
 
 class FakeJobRunner:
@@ -131,7 +160,7 @@ class FakeJobRunner:
         spec: JobSpec,
         *,
         state: JobState = "succeeded",
-        lines: Sequence[str] = (),
+        lines: Sequence[Line] = (),
         exit_code: int | None = SUCCESS,
         error: str | None = None,
     ) -> JobRecord:
@@ -151,7 +180,9 @@ class FakeJobRunner:
             error=error,
         )
         self._records[job_id] = record
-        self._live[job_id] = _Live(Script(), lines=list(lines))
+        texts = [line if isinstance(line, str) else line[0] for line in lines]
+        streams: list[Stream | None] = ["out" if isinstance(line, str) else line[1] for line in lines]
+        self._live[job_id] = _Live(Script(), lines=texts, streams=streams)
         return record
 
     # ------------------------------------------------------------------ JobRunner
@@ -198,6 +229,11 @@ class FakeJobRunner:
         if tail is None:
             return tuple(lines)
         return tuple(lines[-tail:]) if tail > 0 else ()
+
+    def log_lines(self, job_id: str, *, tail: int | None = None) -> tuple[LogLine, ...]:
+        texts = self.log(job_id, tail=tail)
+        streams = self._live[job_id].streams[len(self._live[job_id].lines) - len(texts) :]
+        return tuple(LogLine(text, stream) for text, stream in zip(texts, streams, strict=True))
 
     def subscribe(self, listener: Listener) -> Unsubscribe:
         self._listeners.append(listener)
@@ -246,6 +282,7 @@ class FakeJobRunner:
     def emit(self, job_id: str, text: str, stream: Stream | None = "out") -> JobEvent:
         """Send one log line from a job."""
         self._live[job_id].lines.append(text)
+        self._live[job_id].streams.append(stream)
         event = JobEvent("line", self.job(job_id), text=text, stream=stream)
         self._emit(event)
         return event
@@ -324,3 +361,56 @@ class FakeJobRunner:
     def _new_id(self) -> str:
         self._counter += 1
         return format_job_id(FAKE_START, self._counter)
+
+
+def make_spec(**changes: object) -> JobSpec:
+    """A two step Docker job that writes a run, like the ones the builders make."""
+    spec = JobSpec(
+        action="calibrate",
+        title="Calibrate on live",
+        steps=(
+            Step(
+                "Collect PRs",
+                ("collect", "--repo", "pallets/click", "-o", f"{FAKE_WORKSPACE}/tasks/click/prs.jsonl"),
+            ),
+            Step("Build tasks", ("build", "--prs", f"{FAKE_WORKSPACE}/tasks/click/prs.jsonl")),
+        ),
+        needs=("docker", "network"),
+        outputs=(Output("run", f"{FAKE_WORKSPACE}/runs/golden", "Calibration run"),),
+    )
+    return replace(spec, **changes)  # type: ignore[arg-type]  # fields are checked by replace
+
+
+def form_app(
+    form: ActionForm, source: DataSource | None = None, *, workspace: Path | None = None
+) -> WidgetApp:
+    """One form alone in a bare app, for form tests."""
+    data = source or make_source()
+    place = Workspace(workspace or FAKE_WORKSPACE)
+    view = FormView(form, source=lambda: data, info=action_info(form.action_id), workspace=place, id="form")
+    return WidgetApp(view)
+
+
+def fill(view: FormView, **values: object) -> None:
+    """Set fields by name, the way typing or picking would. A picker takes the choice's value."""
+    for name, value in values.items():
+        control = view.row(name).control
+        if isinstance(control, Input):
+            control.value = str(value)
+        elif isinstance(control, PathPicker):
+            control.input.value = str(value)
+        elif isinstance(control, Picker):
+            control.pick(next((c for c in control.fetch() if c.value == value), None))
+        elif isinstance(control, Switch):
+            control.value = bool(value)
+        elif isinstance(control, Select):
+            control.value = value
+        elif isinstance(control, SelectionList):
+            control.deselect_all()
+            for item in value if isinstance(value, Iterable) else ():
+                control.select(item)
+
+
+def row_errors(view: FormView) -> dict[str, str]:
+    """The error under each field that shows one, by field name."""
+    return {row.field.name: row.note.error for row in view.query(FieldRow) if row.note.error is not None}
