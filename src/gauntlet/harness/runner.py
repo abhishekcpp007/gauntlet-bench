@@ -51,8 +51,6 @@ def run(
     max_steps: int | None = None,  # None: each task's category profile decides
     cache_dir: Path | None = None,
     reward_config: RewardConfig | None = None,
-    judge_client: Any = None,
-    judge_model: str = "claude-opus-5-5",
     policy_client: Any = None,
     budget: Budget | None = None,
     on_result: Callable[[EpisodeResult], None] | None = None,
@@ -98,8 +96,6 @@ def run(
                 trajectory_path=out_dir / "trajectories" / f"{eid}.jsonl",
                 cache_dir=cache_dir,
                 reward_config=reward_config,
-                judge_client=judge_client,
-                judge_model=judge_model,
                 **(env_kwargs or {}),
             )
             policy.run(env)

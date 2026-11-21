@@ -108,8 +108,6 @@ class SWEEnv:
         trajectory_path: str | Path | None = None,
         cache_dir: Path | None = None,
         reward_config: RewardConfig | None = None,
-        judge_client: Any = None,
-        judge_model: str = "claude-opus-5-5",
         grade_fn: Callable[[HarnessTask, str], GradeResult] | None = None,
     ) -> None:
         self.task = task
@@ -119,8 +117,6 @@ class SWEEnv:
         self.trajectory_path = Path(trajectory_path) if trajectory_path else None
         self.cache_dir = cache_dir
         self.reward_config = reward_config or profile.reward
-        self.judge_client = judge_client
-        self.judge_model = judge_model
         self._grade = grade_fn or (lambda t, p: grade_patch(t, p, cache_dir=cache_dir))
         self.sb: Sandbox | None = None
         self.steps = 0
@@ -319,9 +315,7 @@ class SWEEnv:
         for problem in grade.tampered:  # the grader caught it at run time, which beats any static rule
             cheat.findings.append(Finding(rule="grader-tamper", severity="high", message=problem))
         items = task.rubric or default_rubric(task)
-        rubric = score_rubric(
-            task, patch, grade, cheat, items, client=self.judge_client, model=self.judge_model
-        )
+        rubric = score_rubric(task, patch, grade, cheat, items)
         reward, breakdown = compute_reward(
             grade, rubric, cheat.verdict, patch, task.gold_patch, self.reward_config, task=task
         )
