@@ -226,10 +226,52 @@ Every agent episode, validation run, leak scan and grade boots its own container
 | `gauntlet report --results runs/results.jsonl` | the results tables. `--cutoff` and `--html` are optional |
 | `gauntlet calibrate --tasks tasks.jsonl` | the red-team run above |
 | `gauntlet cheatcatcher scan` and `rules` | Cheat Catcher on its own |
+| `gauntlet tui` | browse task sets and run folders in the terminal, read-only |
 
 `--policies` takes `oracle` and `noop`, plus `cheater` or `cheater:<trick>` for the cheats. A real model is `claude:<model id>`. Claude policies need the `claude` extra and `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`). `--attempts N` gives pass@k. `--max-episodes`, `--max-tokens`, `--max-seconds` and `--max-usd` (with `--prices`) cap what a run can spend. Runs are resumable, since an episode already in `results.jsonl` is skipped. Each episode adds a line to `results.jsonl` and saves its trajectory under `trajectories/`.
 
 `gauntlet report` puts a 95% bootstrap interval next to pass@1, resampling tasks and not episodes, and it runs McNemar's exact test between each pair of policies. `--cutoff YYYY-MM-DD` splits every metric into PRs merged before and after that date. Every episode records how it was produced. That covers the harness version and policy params, the image and its fingerprint, plus the grading seed and the time. The report warns when one policy's rows weren't measured the same way.
+
+## Terminal viewer
+
+`gauntlet tui` lets you browse the shipped task sets and any run folder from your terminal. It's built to show what a score is and why it came out that way.
+
+Install it with `pip install "gauntlet[tui]"`, or run `uv sync` in a checkout. Then start it:
+
+```bash
+gauntlet tui                  # reads ./datasets if it's there
+gauntlet tui --run runs/      # add a run folder (repeat --run for more)
+gauntlet tui --ascii --theme gauntlet-light
+```
+
+| Key | What it does |
+|---|---|
+| `1` to `4` | switch between Overview, Tasks, Runs and Reference |
+| `enter` / `esc` | open the row / go back |
+| `[` `]` | switch tabs on a detail screen |
+| `/` | filter the list as you type |
+| `s` | cycle the sort |
+| `c` | copy the id under the cursor |
+| `ctrl+p` | jump to any task, run or episode by id |
+| `?` | every key that works where you are |
+
+**Overview** has the headline numbers with a table of datasets and a table of runs.
+
+![The overview: headline numbers, datasets and runs](docs/tui-overview.svg)
+
+**Tasks** lists every task. Open one to read its statement and its tests. Its leak checks and patches sit in tabs next to every episode played on it.
+
+**Runs** lists the shipped calibration results and each run folder you passed in. A run opens to one row per policy and a task by policy matrix. Its episodes and the calibration check have tabs of their own.
+
+![A run's matrix: every task against every policy](docs/tui-matrix.svg)
+
+An **episode** shows its reward broken into parts next to Cheat Catcher's evidence. The tests and the rubric get tabs, and so do the patch and every step the agent took.
+
+![The evidence behind a cheating episode](docs/tui-evidence.svg)
+
+**Reference** explains the grading steps and the leak checks, plus the Cheat Catcher rules and the cheat policies.
+
+The viewer is read-only. It never grades anything and it never changes a score.
 
 ## Limits
 

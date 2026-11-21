@@ -1,6 +1,7 @@
 import importlib
 import inspect
 import pkgutil
+import re
 from pathlib import Path
 
 import gauntlet.tui
@@ -37,3 +38,15 @@ def test_every_css_path_exists():
 def test_every_tcss_file_is_used():
     used = {path.resolve() for path in declared_css().values()}
     assert {path.resolve() for path in TUI.rglob("*.tcss")} <= used
+
+
+ROOT = TUI.parents[2]
+
+
+def test_readme_screenshots_exist_and_show_no_local_paths():
+    readme = (ROOT / "README.md").read_text()
+    shots = re.findall(r"\]\((docs/tui-[\w-]+\.svg)\)", readme)
+    assert len(shots) >= 2
+    for shot in shots:
+        svg = (ROOT / shot).read_text()
+        assert not re.search(r"/Users/|/home/|/private/|/tmp/", svg), shot
