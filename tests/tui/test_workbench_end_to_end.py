@@ -16,6 +16,7 @@ from gauntlet.tui.screens.job import JobScreen
 from gauntlet.tui.screens.workbench import ActionList, WorkbenchScreen
 from gauntlet.tui.store import Store
 from gauntlet.tui.widgets.grid import DataGrid
+from gauntlet.tui.widgets.joblog import LogLines
 from gauntlet.tui.workspace import Workspace
 
 from .factories import screen_text
@@ -83,7 +84,8 @@ async def test_scan_a_cheating_patch_through_a_real_process(tmp_path: Path):
         text = screen_text(app)
         assert "✓ succeeded" in text and "exit 2" in text
         assert "● cheating" in text and "finding" in text
-        assert '"verdict": "cheating"' in text
+        log = app.screen.query_one(LogLines)
+        assert any('"verdict": "cheating"' in line.text for line in log.lines)
         log_path = Path(record.log_path)
         assert log_path.is_relative_to(root.resolve()) and log_path.read_text().strip()
 

@@ -51,7 +51,8 @@ async def test_typing_narrows_the_list_and_enter_picks():
 
 
 async def test_esc_closes_without_a_change_and_nothing_matching_says_so():
-    picker = Picker("Thing", lambda: (Choice("a", "alpha"),), value="a")
+    alpha = Choice("a", "alpha")
+    picker = Picker("Thing", lambda: (alpha,), choice=alpha)
     async with WidgetApp(picker).run_test(size=SIZE) as pilot:
         picker.focus()
         await pilot.press("enter")
