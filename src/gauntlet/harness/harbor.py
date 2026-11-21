@@ -58,6 +58,11 @@ STORAGE_MB = 10240
 COLLECT_TIMEOUT_SEC = 120
 GRADE_MARGIN_SEC = 600  # reinstall, fingerprints and the compile checks on top of the suite itself
 MIB_PER_GIB = 1024
+HARBOR_SCHEMA_VERSION = "1.0"
+GPUS = 0
+SCRIPT_MODE = 0o755
+TIMEOUT_EXIT_CODE = -1
+NO_REWARD = 0.0
 
 
 def agent_timeout(task: HarnessTask) -> float:
@@ -92,7 +97,7 @@ def task_toml(task: HarnessTask, agent_hosts: tuple[str, ...] = ()) -> str:
         f"cpus = {max(1, int(runner.cpus))}",
         f"memory_mb = {_memory_mb(runner.memory)}",
         f"storage_mb = {STORAGE_MB}",
-        "gpus = 0",
+        f"gpus = {GPUS}",
     ]
     if agent_hosts:
         hosts = ", ".join(_toml_str(h) for h in agent_hosts)
@@ -101,7 +106,7 @@ def task_toml(task: HarnessTask, agent_hosts: tuple[str, ...] = ()) -> str:
         network = ['network_mode = "no-network"']
     keywords = ", ".join(_toml_str(k) for k in ("gauntlet", task.category, runner.name))
     lines = [
-        'schema_version = "1.0"',
+        f"schema_version = {_toml_str(HARBOR_SCHEMA_VERSION)}",
         "",
         "[task]",
         f"name = {_toml_str('gauntlet/' + task.instance_id)}",
@@ -229,7 +234,7 @@ def export_task(
     test = root / "tests" / "test.sh"
     test.write_text(TEST_SH)
     for script in (solve, test):
-        script.chmod(0o755)
+        script.chmod(SCRIPT_MODE)
     (root / "tests" / "task.json").write_text(task.model_dump_json(indent=2) + "\n")
     return root
 
@@ -275,7 +280,7 @@ class LocalSandbox:
             )
             code, out, err, timed_out = proc.returncode, proc.stdout, proc.stderr, False
         except subprocess.TimeoutExpired as e:
-            code, out, err, timed_out = -1, e.stdout or b"", e.stderr or b"", True
+            code, out, err, timed_out = TIMEOUT_EXIT_CODE, e.stdout or b"", e.stderr or b"", True
         cap = self.max_output_bytes
         return ExecResult(
             exit_code=code,
@@ -348,7 +353,7 @@ def harbor_grade(task_path: Path, patch_path: Path, out_dir: Path) -> int:
     try:
         report = grade_here(task, patch)
     except Exception as e:  # noqa: BLE001 - the reward file is the contract, whatever broke
-        report = {"instance_id": task.instance_id, "reward": 0.0, "resolved": False, "error": repr(e)}
+        report = {"instance_id": task.instance_id, "reward": NO_REWARD, "resolved": False, "error": repr(e)}
     (out_dir / "gauntlet.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
     rewards = {"reward": report["reward"], "resolved": float(report["resolved"])}
     (out_dir / "reward.json").write_text(json.dumps(rewards) + "\n")

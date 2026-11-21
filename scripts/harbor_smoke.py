@@ -16,6 +16,9 @@ import shutil
 import sys
 from pathlib import Path
 
+ORACLE_REWARD = 1.0
+NOP_MAX_REWARD = 0.0
+
 FORGE = """\
 import pytest
 
@@ -46,9 +49,9 @@ def check(jobs: Path, expect: str) -> int:
     bad = []
     for r in reports:
         if expect == "oracle":
-            ok = r.get("resolved") is True and math.isclose(r.get("reward", 0), 1.0)
+            ok = r.get("resolved") is True and math.isclose(r.get("reward", NOP_MAX_REWARD), ORACLE_REWARD)
         elif expect == "nop":
-            ok = r.get("resolved") is False and r.get("reward", 1) <= 0
+            ok = r.get("resolved") is False and r.get("reward", ORACLE_REWARD) <= NOP_MAX_REWARD
         else:
             ok = r.get("resolved") is False and r.get("cheat_verdict") == "cheating"
         line = {k: r.get(k) for k in ("instance_id", "reward", "resolved", "cheat_verdict", "error")}
