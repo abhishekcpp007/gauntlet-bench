@@ -24,6 +24,7 @@ def test_every_mark_has_a_symbol_an_ascii_symbol_and_a_word():
         theme.INTACT,
         theme.ERROR,
         theme.SUMMARY_ONLY,
+        theme.NOT_PLAYED,
     ]
     for mark in marks:
         assert mark.symbol and mark.word

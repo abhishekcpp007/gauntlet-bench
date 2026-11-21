@@ -133,6 +133,7 @@ TAMPERED = Mark("✗", "x", "tampered", "bad")
 INTACT = Mark("✓", "+", "intact", "good")
 ERROR = Mark("!", "!", "error", "bad")
 WARNING = Mark("▲", "^", "warning", "warn")
+NOT_PLAYED = Mark("·", ".", "not played", "muted")
 SUMMARY_ONLY = Mark("◌", "-", "summary", "muted")
 
 

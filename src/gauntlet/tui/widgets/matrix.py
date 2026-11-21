@@ -24,6 +24,7 @@ from .. import format as fmt
 from ..models import Matrix as MatrixData
 from ..models import MatrixCell
 from ..theme import (
+    NOT_PLAYED,
     RESOLVED,
     REWARD_MAX,
     REWARD_MIN,
@@ -37,7 +38,6 @@ from ..theme import (
 from .messages import CopyRequested
 from .themed import Themed
 
-NOT_PLAYED = Mark("·", ".", "not played", "muted")
 FIRST_POLICY = 1
 GAP = " "
 HEADER_WIDTH = 9
