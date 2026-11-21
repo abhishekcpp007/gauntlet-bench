@@ -43,6 +43,7 @@ class GauntletScreen(Screen[None]):
     ]
 
     crumb: str = ""
+    pending_tab_steps: int = 0
 
     @property
     def gauntlet(self) -> GauntletApp:
@@ -93,7 +94,7 @@ class GauntletScreen(Screen[None]):
         if action == "facets":
             return any(bar.groups for bar in self.visible_filter_bars())
         if action == "tab":
-            return bool(self.query(TabbedContent))
+            return bool(self.query(TabbedContent)) or self.loading
         return True
 
     def visible_filter_bars(self) -> list[FilterBar]:
@@ -114,7 +115,15 @@ class GauntletScreen(Screen[None]):
                 bar.choose()
                 return
 
+    @property
+    def loading(self) -> bool:
+        """True while the screen's body is still on its way."""
+        return False
+
     def action_tab(self, step: int) -> None:
+        if not self.query(TabbedContent):
+            self.pending_tab_steps += step
+            return
         tabs = self.query(TabbedContent).first()
         panes = [pane.id for pane in tabs.query("TabPane") if pane.id and not pane.disabled]
         if not panes:
@@ -144,3 +153,16 @@ class DataScreen(GauntletScreen, Generic[T]):
 
     def reload(self) -> None:
         self.query_one("#body", Deferred).load()
+
+    @property
+    def loading(self) -> bool:
+        return any(not body.ready for body in self.query("#body").results(Deferred))
+
+    def on_deferred_ready(self, event: Deferred.Ready) -> None:
+        """Tab keys pressed while the body loaded are applied once the tabs exist."""
+        if event.deferred.id != "body":
+            return
+        self.refresh_bindings()
+        steps, self.pending_tab_steps = self.pending_tab_steps, 0
+        if steps and self.query(TabbedContent):
+            self.call_after_refresh(self.action_tab, steps)

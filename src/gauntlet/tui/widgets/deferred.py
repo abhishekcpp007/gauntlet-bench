@@ -16,6 +16,7 @@ from typing import Generic, TypeVar, cast
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
+from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Input
 from textual.worker import Worker, WorkerState
@@ -26,6 +27,17 @@ T = TypeVar("T")
 
 
 class Deferred(Vertical, Generic[T]):
+    class Ready(Message):
+        """The content (or the error state) is mounted."""
+
+        def __init__(self, deferred: Deferred[object]) -> None:
+            super().__init__()
+            self.deferred = deferred
+
+        @property
+        def control(self) -> Deferred[object]:
+            return self.deferred
+
     DEFAULT_CSS = """
     Deferred {
         height: 1fr;
@@ -48,6 +60,7 @@ class Deferred(Vertical, Generic[T]):
         self.what = what
         self.lazy = lazy
         self.state: WorkerState | None = None
+        self.ready = False
         self._worker: Worker[T] | None = None
 
     def compose(self) -> ComposeResult:
@@ -67,6 +80,7 @@ class Deferred(Vertical, Generic[T]):
             self.remove_children()
             self.mount(Loading(self.what))
         self.state = WorkerState.PENDING
+        self.ready = False
         self._worker = self.run_worker(self.fetch, thread=True, exclusive=True, exit_on_error=False)
 
     async def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
@@ -90,6 +104,8 @@ class Deferred(Vertical, Generic[T]):
                 if widget.focusable and not isinstance(widget, Input):
                     widget.focus()
                     break
+        self.ready = True
+        self.post_message(self.Ready(self))
 
     def _failed(self, error: BaseException) -> ErrorState:
         return ErrorState(f"Couldn't load {self.what}", describe_error(error))

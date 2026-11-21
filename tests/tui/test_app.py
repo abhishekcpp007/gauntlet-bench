@@ -1,3 +1,4 @@
+import threading
 from collections.abc import Iterable
 from dataclasses import replace
 
@@ -399,3 +400,29 @@ async def test_filter_keys_only_see_the_visible_tab():
         assert "Filter" in screen_text(app).splitlines()[-1]
         await pilot.press("slash")
         assert isinstance(app.focused, Input)
+
+
+class SlowTabs(TabbedFilter):
+    def __init__(self, gate) -> None:
+        super().__init__()
+        self.gate = gate
+
+    def fetch(self) -> tuple[TaskRow, ...]:
+        self.gate.wait(timeout=5)
+        return super().fetch()
+
+
+async def test_tab_keys_pressed_while_loading_apply_when_the_tabs_arrive():
+    gate = threading.Event()
+    app = GauntletApp(make_source())
+    async with app.run_test(size=WIDE) as pilot:
+        await settle(app, pilot)
+        screen = SlowTabs(gate)
+        await app.push_screen(screen)
+        await pilot.pause()
+        assert screen.loading and screen.check_action("tab", (1,))
+        await pilot.press("right_square_bracket")
+        gate.set()
+        await settle(app, pilot)
+        assert not screen.loading
+        assert screen.query_one(TabbedContent).active == "list"
