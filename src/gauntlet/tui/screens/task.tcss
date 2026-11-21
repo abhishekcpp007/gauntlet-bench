@@ -1,0 +1,48 @@
+/* The Task screen: facts in two columns, then the tabs. */
+
+#task-facts {
+    height: auto;
+    padding: 1 1 0 1;
+}
+
+#task-facts Facts {
+    width: 1fr;
+    padding: 0 1;
+}
+
+#task-tabs {
+    margin-top: 1;
+}
+
+#statement-text {
+    padding-bottom: 1;
+}
+
+#tests-split {
+    height: 1fr;
+}
+
+#tests-summary {
+    width: 1fr;
+}
+
+#p2p-pane {
+    width: 1fr;
+    height: 1fr;
+}
+
+#p2p > FilterBar {
+    margin-bottom: 1;
+}
+
+#patches > Deferred > .intro {
+    margin: 1 0;
+}
+
+.patch {
+    height: 1fr;
+}
+
+#episodes-grid {
+    margin-top: 1;
+}
