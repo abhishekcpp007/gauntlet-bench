@@ -9,7 +9,7 @@ Line numbers are for this branch. "Harbor" means Harbor's own source, read from 
 ## 1. The rule rubric is dropped, so the reward differs
 
 - `grade_here` calls `compute_reward(grade, None, ...)`, so `rubric=None` (`harbor.py:328-330`).
-- `gauntlet run` always scores the rule rubric, judge or no judge. `SWEEnv` uses `task.rubric or default_rubric(task)` and `score_rubric` (`env.py:325-331`). `default_rubric` says "Rule-only rubric. Always available, needs no model" (`rubric.py:217-218`). Judge items are just skipped when there's no client (`rubric.py:337`).
+- `gauntlet run` always scores the rule rubric. `SWEEnv` uses `task.rubric or default_rubric(task)` and `score_rubric` (`env.py:321-322`). `default_rubric` says "Rule-only rubric. Always available, needs no model" (`rubric.py:215-216`). `score_rubric` needs no model either (`rubric.py:303-328`).
 - With `None`, `compute_reward` spreads the rubric's weight over tests and similarity (`reward.py:90-96`).
 - Worked numbers. A resolved SWE task with similarity 0.4 and rule rubric 0.8 scores 0.86 in `gauntlet run` and 0.88 in Harbor. An LHT task with P2P intact scores 0.58 in `gauntlet run` and 0.5 in Harbor, at milestone mean 0.5 and rubric 0.9.
 - Outside the short cuts (a malformed or cheating patch gives -1, `reward.py:58-63`) and the no-progress cap of 0 (`reward.py:101-104`), the two only match by chance.
@@ -36,7 +36,7 @@ Line numbers are for this branch. "Harbor" means Harbor's own source, read from 
 
 - The Harbor Dockerfile starts from the base image and runs the task's install script again (`harbor.py:145-179`, install.sh written at `:224`). The install lines are unpinned `pip install` (`envs/detect.py:314-336`), so versions resolve when Harbor builds the image.
 - The task's `env_fingerprint` is copied into task.toml's metadata (`harbor.py:117`) and never compared with anything.
-- `gauntlet run` grades on the image the task was validated in when it's there. When it has to rebuild, it refuses an image whose fingerprint drifted (`sandboxing.py:83-87`).
+- `gauntlet run` grades on the image the task was validated in when it's there. When it has to rebuild, it refuses an image whose fingerprint drifted (`sandboxing.py:84-88`).
 - So a Harbor run can grade on an env the task was never validated in, and nothing says so.
 - Likely fix: recompute the fingerprint at export with `build.env_fingerprint` and refuse on a mismatch, about 5 lines. That catches a changed install script or changed dependency files. Package versions resolved at build time would still float.
 
