@@ -89,21 +89,27 @@ class GauntletScreen(Screen[None]):
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "filter":
-            return bool(self.query(FilterBar))
+            return bool(self.visible_filter_bars())
         if action == "facets":
-            return any(bar.groups for bar in self.query(FilterBar))
+            return any(bar.groups for bar in self.visible_filter_bars())
         if action == "tab":
             return bool(self.query(TabbedContent))
         return True
 
+    def visible_filter_bars(self) -> list[FilterBar]:
+        """Filter bars that are showing: not in a hidden tab, not hidden themselves."""
+        return [bar for bar in self.query(FilterBar) if all(node.display for node in bar.ancestors_with_self)]
+
+    def on_tabbed_content_tab_activated(self) -> None:
+        self.refresh_bindings()
+
     def action_filter(self) -> None:
-        for bar in self.query(FilterBar):
-            if bar.display:
-                bar.focus_input()
-                return
+        for bar in self.visible_filter_bars():
+            bar.focus_input()
+            return
 
     def action_facets(self) -> None:
-        for bar in self.query(FilterBar):
+        for bar in self.visible_filter_bars():
             if bar.groups:
                 bar.choose()
                 return

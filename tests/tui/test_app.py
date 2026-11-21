@@ -3,7 +3,7 @@ from dataclasses import replace
 
 from textual.command import CommandPalette
 from textual.widget import Widget
-from textual.widgets import Input
+from textual.widgets import Input, Static, TabbedContent, TabPane
 
 from gauntlet.tui.app import GauntletApp
 from gauntlet.tui.models import Facet, TaskRow
@@ -364,3 +364,38 @@ async def test_narrow_footer_drops_the_palette_hint_but_keeps_quit():
         await pilot.resize_terminal(*WIDE)
         await settle(app, pilot)
         assert "Palette" in screen_text(app).splitlines()[-1]
+
+
+class TabbedFilter(DataScreen[tuple[TaskRow, ...]]):
+    crumb = "Tabbed"
+    what = "tasks"
+
+    def fetch(self) -> tuple[TaskRow, ...]:
+        return self.source.tasks()
+
+    def build(self, data: tuple[TaskRow, ...]) -> Iterable[Widget]:
+        tabs = TabbedContent()
+        tabs.compose_add_child(TabPane("Plain", Static("nothing to filter"), id="plain"))
+        bar = FilterBar([FacetGroup("runner", "Runner", (Facet("pytest", 8),))])
+        tabs.compose_add_child(TabPane("List", bar, id="list"))
+        yield tabs
+
+
+async def test_filter_keys_only_see_the_visible_tab():
+    app = GauntletApp(make_source())
+    async with app.run_test(size=WIDE) as pilot:
+        await settle(app, pilot)
+        screen = TabbedFilter()
+        await app.push_screen(screen)
+        await settle(app, pilot)
+        assert not screen.check_action("filter", ())
+        assert not screen.check_action("facets", ())
+        assert "Filter" not in screen_text(app).splitlines()[-1]
+        await pilot.press("slash")
+        assert not isinstance(app.focused, Input)
+        await pilot.press("right_square_bracket")
+        await pilot.pause()
+        assert screen.check_action("filter", ()) and screen.check_action("facets", ())
+        assert "Filter" in screen_text(app).splitlines()[-1]
+        await pilot.press("slash")
+        assert isinstance(app.focused, Input)

@@ -459,12 +459,6 @@ class TaskScreen(DataScreen[TaskDetail]):
             id="horizon-body",
         )
 
-    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
-        if action == "filter":
-            tabs = self.query(TabbedContent)
-            return bool(tabs) and tabs.first().active == TESTS_TAB and bool(self.query(FilterBar))
-        return super().check_action(action, parameters)
-
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
         self.refresh_bindings()
         for widget in event.pane.query("*"):

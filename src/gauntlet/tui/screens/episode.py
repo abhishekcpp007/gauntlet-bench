@@ -597,8 +597,6 @@ class EpisodeScreen(DataScreen[EpisodeDetail]):
         return found.first().active if found else None
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
-        if action in ("filter", "facets") and (self.active_tab != "tests" or not self.query("#tests-filter")):
-            return False
         if action == "open_task":
             return self.detail is not None
         return super().check_action(action, parameters)
