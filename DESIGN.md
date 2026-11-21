@@ -93,8 +93,8 @@ Canaries on a full-suite LHT task (`grading.Canary.sites`): one set next to the 
 test, as for SWE, and one in another graded file, the biggest the release didn't touch if
 there is one. A hidden test file can import an API the agent hasn't written yet and fail to
 collect, and with one site that read as tampering and zeroed an honest agent's milestones
-(tenacity 9.2.0 -> 9.2.1). Two sites also cut how often a cheat that spares each file's last
-two tests gets past every canary, from 1.13% to 0.02% of 25,000 layouts. Canary results are
+(tenacity 9.2.0 -> 9.2.1). Two sites also make it much rarer for a cheat that spares each file's
+last two tests to get past every canary. Canary results are
 matched by base id, since a conftest can parametrize every test (markupsafe reports
 `name[markupsafe._native]`).
 
@@ -170,7 +170,7 @@ with the canary:
   for Python tasks, where a test that binds `localhost` would fail for a reason that has nothing
   to do with the code. That is not measured yet, see the open list below.
 - *One core is not enough.* vitest starts one process per test file. On the sandbox's default
-  single core radashi's 960 tests took 100 seconds a run, and validating one PR is four runs.
+  single core radashi's 960 tests took 100 seconds a run, and validating one PR is five runs.
   The vitest sandbox gets four cores and 2 GB, and the same run takes 20 seconds.
 
 **A patch can bring its own runner.** `git apply` will happily create `node_modules/vitest/...`
