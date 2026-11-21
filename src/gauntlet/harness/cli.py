@@ -434,7 +434,7 @@ def cmd_tui(args: argparse.Namespace) -> int:
             raise
         print('the viewer needs Textual: pip install "gauntlet[tui]"', file=sys.stderr)
         return 1
-    return run(args.datasets, args.run, ascii=args.ascii, theme=args.theme)
+    return run(args.datasets, args.run, ascii=args.ascii, theme=args.theme, workspace=args.workspace)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -541,11 +541,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("-o", "--output", default="calibration")
     p.set_defaults(fn=cmd_calibrate)
 
-    p = sub.add_parser("tui", help="browse tasks, runs and episodes in the terminal (read-only)")
+    p = sub.add_parser("tui", help="browse tasks, runs and episodes, and run jobs from the Workbench")
     p.add_argument("--datasets", help="folder of task sets, default ./datasets if it exists")
     p.add_argument("--run", action="append", default=[], help="a run folder to load, repeatable")
     p.add_argument("--ascii", action="store_true", help="draw with ASCII symbols and borders only")
     p.add_argument("--theme", help="gauntlet-dark (default), gauntlet-light, or any Textual theme")
+    p.add_argument(
+        "--workspace", default="gauntlet-work", help="where Workbench jobs write, default ./gauntlet-work"
+    )
     p.set_defaults(fn=cmd_tui)
 
     sub.add_parser("cheatcatcher", help="scan a trajectory or patch for cheating", add_help=False)
