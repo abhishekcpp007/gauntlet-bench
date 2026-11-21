@@ -219,3 +219,62 @@ def test_local_sandbox_basics(tmp_path):
     res = sb.exec("sleep 5", timeout=0.5)
     assert res.timed_out and not res.ok
     assert sb.exec("exit 3").exit_code == 3
+
+
+def test_cli_harbor_grade_writes_the_reward(verifier, tmp_path):
+    _, task = verifier
+    task_json, patch, out = tmp_path / "task.json", tmp_path / "gauntlet.patch", tmp_path / "logs"
+    task_json.write_text(task.model_dump_json())
+    patch.write_text(task.gold_patch)
+    assert main(["harbor-grade", "--task", str(task_json), "--patch", str(patch), "--out", str(out)]) == 0
+    assert json.loads((out / "reward.json").read_text()) == pytest.approx({"reward": 1.0, "resolved": 1.0})
+
+
+def test_cli_export_passes_grader_ref_and_agent_hosts(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(harbor, "export_task", lambda task, dest, **kw: seen.append(kw))
+    tasks = tmp_path / "tasks.jsonl"
+    tasks.write_text(_task(Path("/workspace/repo"), tmp_path).model_dump_json() + "\n")
+    argv = ["export", "--format", "harbor", "--tasks", str(tasks), "-o", str(tmp_path / "h")]
+    assert main([*argv, "--agent-host", "api.anthropic.com", "--agent-host", "example.com"]) == 0
+    assert seen == [{"grader_ref": "main", "agent_hosts": ("api.anthropic.com", "example.com")}]
+
+
+@pytest.mark.parametrize("spec,mb", [("512m", 512), ("2g", 2 * harbor.MIB_PER_GIB)])
+def test_memory_specs_become_megabytes(spec, mb):
+    assert harbor._memory_mb(spec) == mb
+
+
+SMOKE = Path(__file__).resolve().parent.parent.parent / "scripts" / "harbor_smoke.py"
+
+
+def _smoke(*args: str) -> int:
+    return subprocess.run([sys.executable, str(SMOKE), *args], capture_output=True).returncode
+
+
+def test_smoke_check_holds_each_trial_to_its_policy(tmp_path):
+    jobs = tmp_path / "jobs"
+    trials = {
+        "won": {"resolved": True, "reward": 1.0, "cheat_verdict": "clean"},
+        "caught": {"resolved": False, "reward": -1.0, "cheat_verdict": "cheating"},
+    }
+    for name, report in trials.items():
+        (jobs / name).mkdir(parents=True)
+        (jobs / name / "gauntlet.json").write_text(json.dumps(report))
+    assert _smoke("check", str(jobs / "won"), "oracle") == 0
+    assert _smoke("check", str(jobs / "caught"), "nop") == 0
+    assert _smoke("check", str(jobs / "caught"), "cheat") == 0
+    assert _smoke("check", str(jobs), "oracle") == 1
+    assert _smoke("check", str(jobs / "won"), "nop") == 1
+    assert _smoke("check", str(tmp_path / "none"), "oracle") == 1
+    assert _smoke("check", str(jobs), "bogus") == 2
+
+
+def test_smoke_cheat_variant_swaps_every_solution(tmp_path):
+    src = tmp_path / "src"
+    (src / "o__calc-1" / "solution").mkdir(parents=True)
+    (src / "o__calc-1" / "solution" / "solve.sh").write_text("git apply /solution/gold.diff\n")
+    assert _smoke("cheat-variant", str(src), str(tmp_path / "dst")) == 0
+    forged = (tmp_path / "dst" / "o__calc-1" / "solution" / "solve.sh").read_text()
+    assert "gold.diff" not in forged and "pytest_runtest_makereport" in forged
+    assert (src / "o__calc-1" / "solution" / "solve.sh").read_text() == "git apply /solution/gold.diff\n"
