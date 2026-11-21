@@ -164,3 +164,41 @@ HelpScreen {
     width: 1fr;
     margin-right: 2;
 }
+
+App.-ascii .confirm-box {
+    border: ascii $border;
+}
+
+/* Confirm steps: the job plan, and yes or no prompts */
+
+ConfirmJob,
+ConfirmPrompt {
+    align: center middle;
+}
+
+.confirm-box {
+    width: 96;
+    max-width: 100%;
+    height: auto;
+    max-height: 90%;
+    padding: 1 2;
+    border: round $border;
+    border-title-color: $text-primary;
+    border-title-style: bold;
+    border-subtitle-color: $foreground-muted;
+    background: $surface;
+}
+
+.prompt-box {
+    width: 64;
+}
+
+.confirm-actions {
+    height: auto;
+    margin-top: 1;
+}
+
+.confirm-actions Button {
+    margin-right: 2;
+    min-width: 10;
+}
