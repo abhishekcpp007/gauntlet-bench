@@ -2,35 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from ..jobtypes import JobSpec, Step
-from .base import ActionForm, PathField, TextField, Values, register
-
-
-# Stand-in until the builders merge: swap scan_spec for the builder in gauntlet.tui.actions.
-def scan_spec(patch: Path, protect: tuple[str, ...], trajectory: Path | None) -> JobSpec:
-    argv = ["cheatcatcher", "scan", "--patch", str(patch)]
-    if protect:
-        argv += ["--protect", *protect]
-    if trajectory is not None:
-        argv += ["--trajectory", str(trajectory)]
-    argv.append("--json")
-    return JobSpec(
-        action=ScanPatch.action_id,
-        title=f"Scan {patch.name}",
-        steps=(Step("scan", tuple(argv)),),
-        exclusive=False,
-    )
+from .. import actions
+from ..jobtypes import JobSpec
+from .base import ActionForm, FieldError, PathField, TextField, Values, register
 
 
 @register
 class ScanPatch(ActionForm):
-    action_id = "scan"
-    title = "Scan a patch"
-    group = "score"
-    description = "Check a diff for cheating with Cheat Catcher's rules, the same scan the grader makes."
-    cost = "No Docker and no network. Takes a second or two."
+    action_id = "scan_patch"
     fields = (
         PathField(name="patch", label="Patch file", hint="The unified diff to scan."),
         TextField(
@@ -51,5 +30,8 @@ class ScanPatch(ActionForm):
 
     def build(self, values: Values) -> JobSpec:
         patch = values.path("patch")
-        assert patch is not None
-        return scan_spec(patch, values.items("protect"), values.path("trajectory"))
+        if patch is None:
+            raise FieldError("Pick the patch file.")
+        return actions.scan_patch(
+            patch, protect=values.items("protect"), trajectory=values.path("trajectory")
+        )

@@ -1,17 +1,15 @@
-"""Calibrate: the real fix, a blank answer and the 9 cheats on a task set, checked the way
-`gauntlet calibrate` checks them.
-"""
+"""Calibrate: the real fix, a blank answer and every cheat on a task set, checked the way
+`gauntlet calibrate` checks them."""
 
 from __future__ import annotations
 
-import time
-from pathlib import Path
-
-from ..jobtypes import JobSpec, Output, Step
+from .. import actions
+from ..jobtypes import JobSpec
 from ..models import DataSource
 from .base import (
     ActionForm,
     Choice,
+    FieldError,
     IntegerField,
     MultiChoiceField,
     TaskSetField,
@@ -20,70 +18,25 @@ from .base import (
     register,
 )
 
-DEFAULT_SAMPLE = 3
-MAX_SAMPLE = 500
-DEFAULT_WORKERS = 2
-MAX_WORKERS = 8
-SHIPPED_PREFIX = "gauntlet-"
-STAMP = "%Y%m%d-%H%M%S"
+FIRST_LOOK = 3
 
 
 def policy_choices(source: DataSource) -> tuple[Choice, ...]:
     return tuple(Choice(p.id, p.id, p.what) for p in source.reference().policies)
 
 
-# Stand-in until the builders merge: swap these two for the builder in gauntlet.tui.actions.
-def tasks_file(task_set: str, workspace: Path) -> Path:
-    made = workspace / "tasks" / task_set / "tasks.jsonl"
-    folder = task_set if task_set.startswith(SHIPPED_PREFIX) else f"{SHIPPED_PREFIX}{task_set}"
-    return made if made.is_file() else Path("datasets") / folder / "tasks.jsonl"
-
-
-def calibrate_spec(
-    task_set: str,
-    workspace: Path,
-    *,
-    sample: int | None,
-    seed: str | None,
-    policies: tuple[str, ...],
-    workers: int,
-) -> JobSpec:
-    name = f"calibrate-{task_set}-{time.strftime(STAMP)}"
-    out = workspace / "runs" / name
-    argv = ["calibrate", "--tasks", str(tasks_file(task_set, workspace))]
-    if sample:
-        argv += ["--sample", str(sample)]
-    if seed:
-        argv += ["--seed", seed]
-    if policies:
-        argv += ["--policies", ",".join(policies)]
-    argv += ["--workers", str(workers), "-o", str(out)]
-    return JobSpec(
-        action=Calibrate.action_id,
-        title=f"Calibrate {task_set}",
-        steps=(Step("calibrate", tuple(argv)),),
-        needs=("docker",),
-        outputs=(Output("run", str(out), f"run {name}"),),
-    )
-
-
 @register
 class Calibrate(ActionForm):
     action_id = "calibrate"
-    title = "Calibrate"
-    group = "check"
-    description = "Red-team the grader on a task set: the real fix must win and every cheat must lose."
-    cost = "Docker, a few minutes per task and policy, and a few GB of disk while it runs."
-    needs = ("docker",)
     fields = (
         TaskSetField(name="tasks", label="Task set", hint="The tasks to calibrate on."),
         IntegerField(
             name="sample",
             label="Sample size",
-            hint=f"Random tasks to use, up to {MAX_SAMPLE}. 0 uses every task.",
-            default=DEFAULT_SAMPLE,
-            minimum=0,
-            maximum=MAX_SAMPLE,
+            hint=f"Random tasks to use. {actions.SAMPLE_ALL} uses every task, which can take hours.",
+            default=FIRST_LOOK,
+            minimum=actions.SAMPLE_ALL,
+            maximum=actions.MAX_SAMPLE,
         ),
         TextField(
             name="seed",
@@ -100,21 +53,23 @@ class Calibrate(ActionForm):
         IntegerField(
             name="workers",
             label="Workers",
-            hint=f"Tasks run side by side, each in its own container. 1 to {MAX_WORKERS}.",
-            default=DEFAULT_WORKERS,
-            minimum=1,
-            maximum=MAX_WORKERS,
+            hint=f"Tasks run side by side, each in its own container. Up to {actions.MAX_WORKERS}.",
+            default=actions.WORKERS,
+            minimum=actions.AT_LEAST_ONE,
+            maximum=actions.MAX_WORKERS,
         ),
     )
 
     def build(self, values: Values) -> JobSpec:
-        task_set = values.text("tasks")
+        tasks = values.path("tasks")
+        sample = values.integer("sample")
         workers = values.integer("workers")
-        assert task_set is not None and workers is not None
-        return calibrate_spec(
-            task_set,
+        if tasks is None or sample is None or workers is None:
+            raise FieldError("Fill in the task set, the sample size and the workers.")
+        return actions.calibrate(
             values.workspace,
-            sample=values.integer("sample"),
+            tasks,
+            sample=sample,
             seed=values.text("seed"),
             policies=values.items("policies"),
             workers=workers,

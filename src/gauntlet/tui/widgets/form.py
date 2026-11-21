@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import partial
-from pathlib import Path
 from typing import cast
 
 from rich.console import RenderableType
@@ -27,7 +26,7 @@ from textual.widgets.selection_list import Selection
 from textual.worker import Worker, WorkerState
 
 from .. import format as fmt
-from ..jobtypes import JobSpec
+from ..jobtypes import ActionInfo, JobSpec
 from ..models import DataSource
 from ..theme import ERROR, WARNING
 from ..workbench.base import (
@@ -44,6 +43,7 @@ from ..workbench.base import (
     TaskSetField,
     Values,
 )
+from ..workspace import Workspace
 from .pickers import PathPicker, Picker, run_choices, task_choices, task_set_choices
 from .states import describe_error
 from .themed import Themed
@@ -51,6 +51,7 @@ from .themed import Themed
 Control = Input | Select[str] | Switch | SelectionList[str] | PathPicker | Picker
 OPTIONS_GROUP = "options"
 STACK_BELOW = 72
+NO_WORKSPACE = "The workspace isn't ready yet. It's known once the machine check finishes."
 
 
 class FieldNote(Themed):
@@ -157,6 +158,8 @@ def raw_value(control: Control) -> object:
         return None if control.value is Select.NULL else control.value
     if isinstance(control, SelectionList):
         return tuple(control.selected)
+    if isinstance(control, Picker):
+        return control.choice
     return control.value
 
 
@@ -382,20 +385,21 @@ class FormView(VerticalScroll):
         form: ActionForm,
         *,
         source: Callable[[], DataSource],
-        workspace: Path | None = None,
+        info: ActionInfo | None = None,
+        workspace: Workspace | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
         super().__init__(id=id, classes=classes)
         self.form = form
+        self.info = info
         self.source = source
-        self.workspace = workspace or Path.cwd()
+        self.workspace = workspace
         self.blocked: str | None = None
         self.rows: list[FieldRow] = []
 
     def compose(self) -> ComposeResult:
-        intro = " ".join(part for part in (self.form.description, self.form.cost) if part)
-        yield Static(intro, classes="form-intro", markup=False)
+        yield Static(self.info.description if self.info else "", classes="form-intro", markup=False)
         yield FormBanner()
         self.rows = [FieldRow(field, make_control(field, self.source)) for field in self.form.fields]
         yield from self.rows
@@ -444,6 +448,9 @@ class FormView(VerticalScroll):
         self.banner.show(blocked=self.blocked)
         values = self.check_all()
         if values is None:
+            return None
+        if self.workspace is None:
+            self.banner.show(blocked=self.blocked, error=NO_WORKSPACE)
             return None
         try:
             spec = self.form.build(Values(self.workspace, values))

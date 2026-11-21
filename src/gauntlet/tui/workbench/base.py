@@ -14,8 +14,10 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-from ..jobtypes import ActionGroup, JobRecord, JobSpec, Machine, Need
+from ..actions import ACTIONS
+from ..jobtypes import ActionGroup, ActionInfo, JobRecord, JobSpec, Machine, Need
 from ..models import DataSource
+from ..workspace import Workspace
 
 if TYPE_CHECKING:
     from ..app import GauntletApp
@@ -33,17 +35,15 @@ class FieldError(ValueError):
     """What's wrong with one field's value, as one plain sentence."""
 
 
-class BuildError(ValueError):
-    """The values are each fine but don't make a job together. The form shows the message on top."""
-
-
 @dataclass(frozen=True, slots=True)
 class Choice:
-    """One option in a choice, a multi-choice or a picker: the value, what it's called, a note."""
+    """One option in a choice, a multi-choice or a picker: the value, what it's called, a note,
+    and for a task set or a run the file a job reads (`tasks.jsonl`, `results.jsonl`)."""
 
     value: str
     label: str
     detail: str = ""
+    path: str | None = None
 
 
 ChoiceSource = Callable[[DataSource], Sequence[Choice]]
@@ -215,7 +215,11 @@ class PathField(Field):
 
 @dataclass(frozen=True, kw_only=True)
 class TaskSetField(Field):
-    """A task set: a shipped one, or one a job made in the workspace. The value is its id."""
+    """A task set: a shipped one, or one a job made in the workspace. The value is its `Choice`:
+    `values.text` gives its id and `values.path` its `tasks.jsonl`."""
+
+    def parse(self, raw: object) -> object:
+        return picked_file(raw, f"{self.label} has no task file to read.")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -225,10 +229,27 @@ class TaskField(Field):
 
     task_set: str | None = None
 
+    def parse(self, raw: object) -> object:
+        return raw.value if isinstance(raw, Choice) else raw
+
 
 @dataclass(frozen=True, kw_only=True)
 class RunField(Field):
-    """A loaded run. The value is its id."""
+    """A loaded run. The value is its `Choice`: `values.text` gives its id and `values.path` its
+    results file. With `results`, a run whose results file wasn't shipped can't be picked."""
+
+    results: bool = False
+
+    def parse(self, raw: object) -> object:
+        if self.results:
+            return picked_file(raw, "That run only has summary rows, so there's no results file to read.")
+        return raw
+
+
+def picked_file(raw: object, missing: str) -> Choice:
+    if not isinstance(raw, Choice) or raw.path is None:
+        raise FieldError(missing)
+    return raw
 
 
 def in_range(value: float, minimum: float | None, maximum: float | None, label: str) -> float:
@@ -250,7 +271,7 @@ def repo_name(value: str) -> str | None:
 class Values:
     """The checked values of a form, by field name, and the workspace jobs write into."""
 
-    workspace: Path
+    workspace: Workspace
     data: Mapping[str, object]
 
     def __getitem__(self, name: str) -> object:
@@ -258,6 +279,8 @@ class Values:
 
     def text(self, name: str) -> str | None:
         value = self.data.get(name)
+        if isinstance(value, Choice):
+            return value.value
         return None if value is None else str(value)
 
     def items(self, name: str) -> tuple[str, ...]:
@@ -279,6 +302,8 @@ class Values:
 
     def path(self, name: str) -> Path | None:
         value = self.data.get(name)
+        if isinstance(value, Choice):
+            return None if value.path is None else Path(value.path)
         return None if value is None else Path(str(value))
 
 
@@ -322,23 +347,20 @@ def blocked_reason(needs: Sequence[Need], machine: Machine) -> str | None:
 
 
 class ActionForm:
-    """One action in the Workbench. Subclass it, declare the class attributes and `build`, then
-    `register` it. See the guide in `gauntlet.tui.workbench`.
+    """The form for one of the engine's actions. Subclass it in its own module in this package,
+    set `action_id` to an id from `actions.ACTIONS`, declare `fields` and `build`, and decorate
+    it with `@register`. The title, group, description and needs come from that `ActionInfo`, so
+    the list and the engine can't drift. See the guide in `gauntlet.tui.workbench`.
 
-    `cost` is the one line on what a run costs (Docker, network, minutes, disk). `after` opens what
-    a succeeded job made; the default opens its first output.
+    `after` opens what a succeeded job made; the default opens its first output.
     """
 
     action_id: ClassVar[str]
-    title: ClassVar[str]
-    group: ClassVar[ActionGroup]
-    description: ClassVar[str]
-    cost: ClassVar[str] = ""
-    needs: ClassVar[tuple[Need, ...]] = ()
     fields: ClassVar[tuple[Field, ...]] = ()
 
     def build(self, values: Values) -> JobSpec:
-        """The job these values make. Raise `BuildError` (any `ValueError`) to refuse with a reason."""
+        """The job these values make, from the builder in `gauntlet.tui.actions`. An
+        `ActionError` (any `ValueError`) refuses with its message."""
         raise NotImplementedError
 
     def after(self, job: JobRecord, app: GauntletApp) -> bool:
@@ -349,27 +371,24 @@ class ActionForm:
         return False
 
 
+def action_info(action_id: str) -> ActionInfo | None:
+    """The engine's record for an action id, or None for an id it doesn't know."""
+    return next((info for info in ACTIONS if info.id == action_id), None)
+
+
 _REGISTRY: dict[str, type[ActionForm]] = {}
 
 
 def register(form: type[ActionForm]) -> type[ActionForm]:
-    """Add an action to the Workbench. Use it as a class decorator."""
-    if form.action_id in _REGISTRY and _REGISTRY[form.action_id] is not form:
-        raise ValueError(f"two actions are called {form.action_id}")
-    if form.group not in dict(GROUPS):
-        raise ValueError(f"{form.action_id} is in an unknown group {form.group}")
+    """Give one of the engine's actions its form. Use it as a class decorator."""
+    if action_info(form.action_id) is None:
+        raise ValueError(f"{form.action_id} isn't one of the actions in gauntlet.tui.actions.ACTIONS")
+    if _REGISTRY.get(form.action_id, form) is not form:
+        raise ValueError(f"two forms are registered for {form.action_id}")
     _REGISTRY[form.action_id] = form
     return form
 
 
-def registered() -> tuple[type[ActionForm], ...]:
-    """Every registered action, grouped in `GROUPS` order, each group in the order it was added."""
-    order = {group: index for index, (group, _) in enumerate(GROUPS)}
-    return tuple(sorted(_REGISTRY.values(), key=lambda form: order[form.group]))
-
-
-def form_for(action_id: str, catalogue: Sequence[type[ActionForm]] | None = None) -> type[ActionForm] | None:
-    for form in catalogue if catalogue is not None else _REGISTRY.values():
-        if form.action_id == action_id:
-            return form
-    return None
+def registered() -> dict[str, type[ActionForm]]:
+    """Every registered form, by action id."""
+    return dict(_REGISTRY)

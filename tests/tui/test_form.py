@@ -3,12 +3,12 @@ from pathlib import Path
 import pytest
 from textual.widgets import Input, SelectionList, Switch
 
+from gauntlet.tui.actions import ActionError
 from gauntlet.tui.jobtypes import JobSpec, Step
 from gauntlet.tui.widgets.form import FieldRow, FormBanner, FormView, ReviewButton
 from gauntlet.tui.widgets.pickers import PathPicker, Picker
 from gauntlet.tui.workbench.base import (
     ActionForm,
-    BuildError,
     Choice,
     ChoiceField,
     DateField,
@@ -25,9 +25,10 @@ from gauntlet.tui.workbench.base import (
     Values,
     repo_name,
 )
+from gauntlet.tui.workspace import Workspace
 
 from .factories import LIVE, screen_text
-from .workfakes import fill, form_app, row_errors
+from .fakejobs import fill, form_app, row_errors
 
 SIZE = (120, 40)
 BAD_TITLE = "[red]x[/red]"
@@ -35,9 +36,6 @@ BAD_TITLE = "[red]x[/red]"
 
 class EveryKind(ActionForm):
     action_id = "every-kind"
-    title = "Every kind"
-    group = "check"
-    description = "One field of each kind."
     fields = (
         TextField(name="repo", label="Repo", hint="owner/name", validate=repo_name),
         IntegerField(name="count", label="Count", hint="1 to 5", default=2, minimum=1, maximum=5),
@@ -58,7 +56,7 @@ class EveryKind(ActionForm):
 
     def build(self, values: Values) -> JobSpec:
         if values.flag("dry") and values.integer("count") == 1:
-            raise BuildError("A dry run needs at least two tasks.")
+            raise ActionError("A dry run needs at least two tasks.")
         return JobSpec(action=self.action_id, title=BAD_TITLE, steps=(Step("check", ("check",)),))
 
 
@@ -138,13 +136,20 @@ def test_choices_switches_and_pickers():
         multi.check(())
     with pytest.raises(FieldError, match="Task set is needed"):
         TaskSetField(name="t", label="Task set").check(None)
-    assert RunField(name="r", label="Run").check("golden") == "golden"
+    run = Choice("golden", "golden", path="/runs/golden/results.jsonl")
+    assert RunField(name="r", label="Run", results=True).check(run) is run
+    with pytest.raises(FieldError, match="summary rows"):
+        RunField(name="r", label="Run", results=True).check(Choice("shipped", "shipped"))
+    with pytest.raises(FieldError, match="no task file"):
+        TaskSetField(name="t", label="Task set").check(Choice("odd", "odd"))
+    assert TaskField(name="k", label="Task").check(Choice("tomli-318", "tomli-318")) == "tomli-318"
 
 
-def test_values_read_each_kind():
-    values = Values(
-        Path("w"), {"t": "x", "n": 3, "f": 0.5, "b": True, "p": Path("a"), "i": ("a", "b"), "o": None}
-    )
+def test_values_read_each_kind(tmp_path: Path):
+    picked = Choice("live", "live", path="/d/live/tasks.jsonl")
+    data = {"t": "x", "n": 3, "f": 0.5, "b": True, "p": Path("a"), "i": ("a", "b"), "o": None, "c": picked}
+    values = Values(Workspace(tmp_path), data)
+    assert values.text("c") == "live" and values.path("c") == Path("/d/live/tasks.jsonl")
     assert values.text("t") == "x" and values.integer("n") == 3 and values.number("f") == 0.5
     assert values.flag("b") and values.path("p") == Path("a") and values.items("i") == ("a", "b")
     assert values.text("o") is None and values.items("o") == () and values.integer("o") is None
@@ -251,9 +256,6 @@ async def test_a_blocked_form_says_why_and_wont_post(monkeypatch):
 async def test_enter_on_the_last_text_field_reviews(monkeypatch):
     class OneField(ActionForm):
         action_id = "one"
-        title = "One"
-        group = "score"
-        description = "One field."
         fields = (TextField(name="name", label="Name"),)
 
         def build(self, values: Values) -> JobSpec:
@@ -291,9 +293,6 @@ async def test_choices_from_the_data_load_in_a_thread():
 
     class Loaded(ActionForm):
         action_id = "loaded"
-        title = "Loaded"
-        group = "check"
-        description = "Choices from the data."
         fields = (MultiChoiceField(name="policies", label="Policies", options=policies),)
 
     app = form_app(Loaded())

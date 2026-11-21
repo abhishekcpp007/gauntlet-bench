@@ -35,7 +35,7 @@ DETAIL_GAP = 2
 
 
 def task_set_choices(source: DataSource) -> tuple[Choice, ...]:
-    return tuple(Choice(d.id, d.id, fmt.plural(d.tasks, "task")) for d in source.datasets())
+    return tuple(Choice(d.id, d.id, fmt.plural(d.tasks, "task"), d.tasks_file) for d in source.datasets())
 
 
 def task_choices(source: DataSource, task_set: str | None = None) -> tuple[Choice, ...]:
@@ -43,7 +43,7 @@ def task_choices(source: DataSource, task_set: str | None = None) -> tuple[Choic
 
 
 def run_choices(source: DataSource) -> tuple[Choice, ...]:
-    return tuple(Choice(r.id, r.id, fmt.plural(r.episodes, "episode")) for r in source.runs())
+    return tuple(Choice(r.id, r.id, fmt.plural(r.episodes, "episode"), r.results_file) for r in source.runs())
 
 
 def choice_line(choice: Choice, look_muted: Callable[[str], Text]) -> Text:
@@ -172,7 +172,7 @@ class PickList(ModalScreen[Choice | None]):
 
 
 class Picker(Themed, can_focus=True):
-    """One chosen value, or a dim prompt. `enter` opens the list. Posts `Picker.Changed`."""
+    """One chosen `Choice`, or a dim prompt. `enter` opens the list. Posts `Picker.Changed`."""
 
     HELP_GROUP = "Form"
     BINDINGS = [
@@ -213,7 +213,7 @@ class Picker(Themed, can_focus=True):
         fetch: Fetch,
         *,
         prompt: str = "choose",
-        value: str | None = None,
+        choice: Choice | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
@@ -221,15 +221,20 @@ class Picker(Themed, can_focus=True):
         self.title = title
         self.fetch = fetch
         self.prompt = prompt
-        self.labels: dict[str, str] = {}
-        self.set_reactive(Picker.value, value)
+        self.choice = choice
+        self.set_reactive(Picker.value, None if choice is None else choice.value)
 
     def set_fetch(self, fetch: Fetch, *, prompt: str | None = None) -> None:
         """Change where the choices come from, which also clears the value."""
         self.fetch = fetch
         if prompt is not None:
             self.prompt = prompt
-        self.value = None
+        self.pick(None)
+
+    def pick(self, choice: Choice | None) -> None:
+        """Choose `choice`, or nothing."""
+        self.choice = choice
+        self.value = None if choice is None else choice.value
 
     def watch_value(self, value: str | None) -> None:
         self.post_message(self.Changed(self, value))
@@ -242,13 +247,13 @@ class Picker(Themed, can_focus=True):
     def action_open(self) -> None:
         def picked(choice: Choice | None) -> None:
             if choice is not None:
-                self.value = choice.value
+                self.pick(choice)
             self.focus()
 
         self.app.push_screen(PickList(self.title, self.fetch, current=self.value), picked)
 
     def action_clear(self) -> None:
-        self.value = None
+        self.pick(None)
 
 
 class PathBrowser(ModalScreen[str | None]):
