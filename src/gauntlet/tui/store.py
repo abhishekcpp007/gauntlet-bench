@@ -334,6 +334,7 @@ class _Run:
     summary: RunSummary | None = None
     detail: RunDetail | None = None
     from_workspace: bool = False
+    results: Path | None = None
 
     @property
     def full(self) -> bool:
@@ -415,6 +416,7 @@ class Store:
                     kind="shipped",
                     path=None,
                     dataset_id=dataset_id,
+                    results=folder / VALIDATION_FILE,
                 )
                 self._load_episodes(run, folder / VALIDATION_FILE)
                 self._runs[run.id] = run
@@ -518,6 +520,7 @@ class Store:
             path=path,
             dataset_id=None,
             from_workspace=from_workspace,
+            results=results,
         )
         self._load_episodes(run, results)
         homes = {self._tasks[e.row.instance_id][1] for e in run.episodes if e.row.instance_id in self._tasks}
@@ -719,6 +722,7 @@ class Store:
             leakcheck_ok=sum(1 for r in rows if r.leakcheck_ok),
             has_validation=(dataset.path / VALIDATION_FILE).is_file(),
             from_workspace=dataset.from_workspace,
+            tasks_file=str(dataset.path / TASKS_FILE),
         )
 
     def dataset(self, dataset_id: str) -> DatasetDetail:
@@ -832,6 +836,7 @@ class Store:
                 cheats=_group([e for e in episodes if e.row.policy_kind == "cheat"]),
                 violations=len(self._violations(run)) if run.full else None,
                 from_workspace=run.from_workspace,
+                results_file=str(run.results) if run.results and run.full else None,
             )
         return run.summary
 

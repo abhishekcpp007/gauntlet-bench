@@ -48,6 +48,8 @@ class Interval:
 
 @dataclass(frozen=True, slots=True)
 class DatasetSummary:
+    """One task set. `tasks_file` is its `tasks.jsonl`, the file a job takes."""
+
     id: str
     title: str
     tasks: int
@@ -63,6 +65,7 @@ class DatasetSummary:
     leakcheck_ok: int
     has_validation: bool
     from_workspace: bool = False
+    tasks_file: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,6 +215,9 @@ class PolicyGroup:
 
 @dataclass(frozen=True, slots=True)
 class RunSummary:
+    """One run. `results_file` is the file `gauntlet report` reads: the folder's `results.jsonl`,
+    or a shipped `validation.jsonl` with full rows. None when only summary rows were shipped."""
+
     id: str
     title: str
     kind: RunKind
@@ -228,6 +234,7 @@ class RunSummary:
     cheats: PolicyGroup | None = None
     violations: int | None = None
     from_workspace: bool = False
+    results_file: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

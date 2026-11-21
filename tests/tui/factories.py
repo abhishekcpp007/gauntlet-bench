@@ -674,6 +674,7 @@ def make_dataset_summary(dataset_id: str, rows: Sequence[TaskRow], **overrides: 
         "p2p_total": sum(r.p2p for r in mine),
         "leakcheck_ok": sum(r.leakcheck_ok for r in mine),
         "has_validation": dataset_id == LIVE,
+        "tasks_file": f"/datasets/{dataset_id}/tasks.jsonl",
     }
     values.update(overrides)
     return DatasetSummary(**values)
@@ -711,6 +712,7 @@ def make_run_summary(run_id: str, rows: Sequence[EpisodeRow], **overrides: Any) 
         "noop": _group([r for r in mine if r.policy_kind == "noop"]),
         "cheats": _group([r for r in mine if r.policy_kind == "cheat"]),
         "violations": 0,
+        "results_file": None if shipped else "/runs/golden/before/results.jsonl",
     }
     values.update(overrides)
     return RunSummary(**values)

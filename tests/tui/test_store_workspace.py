@@ -93,3 +93,18 @@ def test_reload_sees_a_new_run(tmp_path):
 def test_reload_without_a_workspace_keeps_the_old_arguments():
     store = Store.load(SAMPLE_DATASETS, [SAMPLE_RUN])
     assert {r.id for r in store.reload().runs()} == {r.id for r in store.runs()}
+
+
+def test_every_task_set_and_full_run_names_its_file(tmp_path):
+    ws = _workspace(tmp_path)
+    store = Store.load(SAMPLE_DATASETS, [SAMPLE_RUN], ws)
+    datasets = {d.id: d for d in store.datasets()}
+    assert datasets[LIVE_ID].tasks_file == str(LIVE_TASKS)
+    assert datasets["workspace/fresh"].tasks_file == str(ws / "tasks" / "fresh" / "tasks.jsonl")
+    runs = {r.id: r for r in store.runs()}
+    assert runs[RUN_ID].results_file == str(SAMPLE_RUN / "results.jsonl")
+    assert runs["workspace/mine"].results_file == str(ws / "runs" / "mine" / "results.jsonl")
+    for run in runs.values():
+        if run.kind == "shipped":
+            assert (run.results_file is None) == (run.detail == "summary")
+            assert run.results_file is None or run.results_file.endswith("validation.jsonl")
