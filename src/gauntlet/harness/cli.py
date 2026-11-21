@@ -458,8 +458,7 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--max-usd", type=float, help="stop once the run has cost this much (needs --prices)")
         p.add_argument(
             "--prices",
-            help="dollars per million tokens, e.g. 'openai:gpt-5.1=1.25/10,claude:=3/15'. "
-            "The longest matching policy prefix wins",
+            help="dollars per million tokens, e.g. 'claude:=3/15'. The longest matching policy prefix wins",
         )
 
     p = sub.add_parser("collect", help="fetch recently merged PRs")

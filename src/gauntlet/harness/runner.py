@@ -1,6 +1,6 @@
 """Run policies x tasks x attempts. Every episode writes three things:
 
-- a sandbox trajectory (`trajectories/<episode>.jsonl`, viewable with `timemachine view`)
+- a sandbox trajectory (`trajectories/<episode>.jsonl`)
 - an RL record (`rl/<episode>.json`: transcript, actions, reward and its breakdown)
 - one line in `results.jsonl`
 
