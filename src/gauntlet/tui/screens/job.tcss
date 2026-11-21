@@ -1,0 +1,29 @@
+/* Job: the state on top, the commands, the live log, and what it made. */
+
+JobScreen #job-commands {
+    height: auto;
+    max-height: 6;
+}
+
+JobScreen.-short JobHeader {
+    margin-bottom: 0;
+}
+
+JobScreen #job-log {
+    height: 1fr;
+}
+
+JobScreen #job-outputs {
+    height: auto;
+    max-height: 8;
+}
+
+JobScreen Outputs {
+    height: auto;
+    border: none;
+    background: $surface;
+}
+
+TextFileScreen #body {
+    padding: 0;
+}
