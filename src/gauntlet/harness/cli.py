@@ -5,7 +5,6 @@ gauntlet build    --prs prs.jsonl -o tasks.jsonl
 gauntlet leakcheck --tasks tasks.jsonl
 gauntlet run      --tasks tasks.jsonl --policies oracle,noop,claude:claude-opus-5-5 --attempts 3 -o runs/
 gauntlet report   --results runs/results.jsonl --cutoff 2026-06-01
-gauntlet pipeline --repo pallets/click --merged-after 2026-06-01 --policies ... -o runs/
 """
 
 from __future__ import annotations
@@ -434,28 +433,6 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     return 1 if bad else 0
 
 
-def cmd_pipeline(args: argparse.Namespace) -> int:
-    out = Path(args.output)
-    out.mkdir(parents=True, exist_ok=True)
-    prs, tasks = out / "prs.jsonl", out / "tasks.jsonl"
-    steps = [
-        (cmd_collect, dict(repo=args.repo, merged_after=args.merged_after, limit=args.limit,
-                           git_fallback=True, output=str(prs))),
-        (cmd_build, dict(prs=str(prs), output=str(tasks), rejected=str(out / "rejected.jsonl"),
-                         python=args.python, scope="full", fix_runs=2, no_leakcheck=False,
-                         rubric=args.judge, judge_model=args.judge_model)),
-        (cmd_run, dict(tasks=str(tasks), policies=args.policies, output=str(out), attempts=args.attempts,
-                       workers=args.workers, max_steps=args.max_steps, judge=args.judge,
-                       judge_model=args.judge_model)),
-    ]  # fmt: skip
-    for fn, kw in steps:
-        code = fn(argparse.Namespace(**kw))
-        if code:
-            return code
-    return cmd_report(argparse.Namespace(results=str(out / "results.jsonl"), cutoff=args.merged_after,
-                                         html=str(out / "report.html")))  # fmt: skip
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="gauntlet", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)  # fmt: skip
@@ -568,15 +545,6 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workers", type=int, default=2)
     p.add_argument("-o", "--output", default="calibration")
     p.set_defaults(fn=cmd_calibrate)
-
-    p = sub.add_parser("pipeline", help="collect, build, run and report in one go")
-    p.add_argument("--repo", action="append", required=True)
-    p.add_argument("--merged-after")
-    p.add_argument("--limit", type=int, default=30)
-    p.add_argument("--python", default="3.12")
-    p.add_argument("-o", "--output", default="runs")
-    runner_args(p)
-    p.set_defaults(fn=cmd_pipeline)
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
