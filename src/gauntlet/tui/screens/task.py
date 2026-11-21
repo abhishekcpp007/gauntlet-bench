@@ -264,7 +264,7 @@ class PassToPass(Vertical):
         self.tests = tuple(tests)
 
     def compose(self) -> ComposeResult:
-        yield FilterBar(placeholder="filter the test ids")
+        yield FilterBar(placeholder="type to filter test ids")
         widest = max((len(t) for t in self.tests), default=0)
         column = Column("id", "Test", lambda t: t, kind="id", width=widest, shrink=True)
         grid = TestGrid([column], key=lambda t: t, empty=NO_P2P, what="test id", id="p2p-grid")
@@ -428,12 +428,13 @@ class TaskScreen(DataScreen[TaskDetail]):
                 pane.border_subtitle = f"{look.symbol(WARNING)} {PATCH_CUT}"
             yield pane
 
-    def episodes(self, data: TaskDetail) -> DataGrid[EpisodeRow]:
+    def episodes(self, data: TaskDetail) -> Vertical:
         grid: DataGrid[EpisodeRow] = DataGrid(
             EPISODE_COLUMNS, key=episode_key, empty=NO_EPISODES, what="run/episode id", id="episodes-grid"
         )
         grid.set_rows(data.episodes)
-        return grid
+        title = f"Episodes {self.gauntlet.look.glyphs.dot} {fmt.count(len(data.episodes))}"
+        return _pane(title, grid, id="episodes-pane")
 
     def horizon(self, horizon: HorizonDetail) -> VerticalScroll:
         dot = self.gauntlet.look.glyphs.dot

@@ -63,6 +63,6 @@ TaskScreen.-compact #patches > Deferred > .intro {
     height: 1fr;
 }
 
-#episodes-grid {
+#episodes-pane {
     margin-top: 1;
 }

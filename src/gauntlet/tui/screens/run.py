@@ -372,7 +372,7 @@ class RunScreen(DataScreen[RunData]):
 
     def episodes_tab(self, data: RunData) -> Iterable[Widget]:
         groups = facet_groups(data.facets)
-        bar = FilterBar(groups, placeholder="type to search episodes", id="episodes-filter")
+        bar = FilterBar(groups, placeholder="type to filter episodes", id="episodes-filter")
         grid: DataGrid[EpisodeRow] = DataGrid(
             EPISODE_COLUMNS,
             key=lambda e: e.episode_id,

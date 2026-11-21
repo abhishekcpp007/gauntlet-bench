@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from .base import GauntletScreen
 
 FILTER_GROUP = "task-filter"
-PLACEHOLDER = "filter by id, repo or PR title"
+PLACEHOLDER = "type to filter tasks"
 
 COLUMNS: tuple[Column[TaskRow], ...] = (
     Column("id", "Instance", lambda t: t.instance_id, kind="id", shrink=True),
