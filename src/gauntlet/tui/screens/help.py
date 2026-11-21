@@ -10,14 +10,20 @@ from rich.table import Table
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, VerticalScroll
+from textual.containers import Horizontal, ScrollableContainer, VerticalScroll
 from textual.dom import DOMNode
 from textual.screen import ModalScreen, Screen
+from textual.widgets import Input, Tabs
 
 from ..widgets.themed import Themed
 
 EVERYWHERE = "Everywhere"
 THIS_SCREEN = "This screen"
+TEXTUAL_GROUPS: tuple[tuple[type[DOMNode], str], ...] = (
+    (Tabs, "Tabs"),
+    (Input, "Text box"),
+    (ScrollableContainer, "Scrolling"),
+)
 KEY_GAP = 2
 
 
@@ -33,7 +39,12 @@ def group_name(node: DOMNode) -> str:
         return EVERYWHERE
     if isinstance(node, Screen):
         return THIS_SCREEN
-    return getattr(node, "HELP_GROUP", type(node).__name__)
+    if hasattr(node, "HELP_GROUP"):
+        return str(node.HELP_GROUP)
+    for kind, name in TEXTUAL_GROUPS:
+        if isinstance(node, kind):
+            return name
+    return type(node).__name__
 
 
 def collect(screen: Screen) -> list[tuple[str, list[KeyHelp]]]:
