@@ -457,6 +457,11 @@ class RunScreen(DataScreen[RunData]):
     def show_tab(self, tab: str) -> None:
         self.query_one("#run-tabs", TabbedContent).active = tab
 
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        if action in ("filter", "facets"):
+            return bool(self.query("#episodes-filter"))
+        return super().check_action(action, parameters)
+
     def action_filter(self) -> None:
         self.on_episodes("filter")
 
