@@ -120,7 +120,7 @@ def strip_test_changes(patch: str, task: Task) -> tuple[str, list[str]]:
 
 
 def extract_patch(sb: Sandbox, task: Task) -> str:
-    """Everything the agent changed since `open_task`, as a git diff.
+    """Everything the agent changed since the sandbox booted, as a git diff.
 
     The diff goes through a file, not stdout. Exec output is capped, and a release-range task's
     patch can run to a few hundred KB (cattrs 26.1.0 -> 26.2.0 is 273 KB), which used to come
