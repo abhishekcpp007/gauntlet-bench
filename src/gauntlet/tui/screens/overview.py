@@ -15,8 +15,9 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 from .. import format as fmt
+from ..cells import run_detail, run_oracle, run_violations
 from ..models import DatasetSummary, Overview, Reference, ReferenceItem, RunSummary
-from ..theme import SUMMARY_ONLY, WARNING, Look, check_mark, leak_mark
+from ..theme import WARNING, Look, check_mark, leak_mark
 from ..widgets.grid import Column, DataGrid
 from ..widgets.stat import Stat
 from ..widgets.states import Empty
@@ -47,26 +48,6 @@ def _leak(summary: DatasetSummary, look: Look) -> Text:
     return text
 
 
-def _oracle(run: RunSummary, look: Look) -> Text:
-    if run.oracle is None:
-        return look.muted(fmt.MISSING)
-    text = look.mark(check_mark(run.oracle.resolved == run.oracle.episodes), word=False)
-    text.append(f" {fmt.ratio(run.oracle.resolved, run.oracle.episodes)}")
-    return text
-
-
-def _violations(run: RunSummary, look: Look) -> Text:
-    if run.violations is None:
-        return look.muted("not checked")
-    if run.violations == 0:
-        return look.mark(check_mark(True), word=False) + Text(" none", end="")
-    return look.mark(WARNING, word=False) + Text(f" {fmt.count(run.violations)}", end="")
-
-
-def _detail(run: RunSummary, look: Look) -> Text:
-    return look.mark(SUMMARY_ONLY) if run.detail == "summary" else Text("full", end="")
-
-
 DATASET_COLUMNS: tuple[Column[DatasetSummary], ...] = (
     Column("id", "Dataset", lambda d: d.id, kind="id", shrink=True),
     Column("title", "Title", lambda d: d.title, priority=4),
@@ -84,7 +65,7 @@ DATASET_COLUMNS: tuple[Column[DatasetSummary], ...] = (
 RUN_COLUMNS: tuple[Column[RunSummary], ...] = (
     Column("id", "Run", lambda r: r.id, kind="id", shrink=True),
     Column("kind", "Kind", lambda r: r.kind, priority=5),
-    Column("detail", "Detail", lambda r: r.detail, render=_detail, priority=4),
+    Column("detail", "Detail", lambda r: r.detail, render=run_detail, priority=4),
     Column("episodes", "Episodes", lambda r: r.episodes, kind="number"),
     Column("tasks", "Tasks", lambda r: r.tasks, kind="number", priority=3),
     Column("policies", "Policies", lambda r: len(r.policies), kind="number", priority=5),
@@ -92,13 +73,13 @@ RUN_COLUMNS: tuple[Column[RunSummary], ...] = (
         "oracle",
         "Oracle resolved",
         lambda r: r.oracle.resolved if r.oracle else None,
-        render=_oracle,
+        render=run_oracle,
         priority=2,
     ),
     Column(
         "cheat", "Best cheat", lambda r: r.cheats.max_reward if r.cheats else None, kind="reward", priority=2
     ),
-    Column("violations", "Violations", lambda r: r.violations, render=_violations),
+    Column("violations", "Violations", lambda r: r.violations, render=run_violations),
 )
 
 

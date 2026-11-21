@@ -16,13 +16,13 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 from .. import format as fmt
+from ..cells import run_detail, run_oracle, run_violations
 from ..models import RunSummary
 from ..theme import Look
 from ..widgets.filterbar import FilterBar
 from ..widgets.grid import Column, DataGrid
 from ..widgets.states import Empty
 from .base import DataScreen
-from .overview import _detail, _oracle, _violations
 
 INTRO = "A run is a batch of graded episodes. Add yours: gauntlet tui --run <folder>"
 NO_RUNS = Empty(
@@ -45,11 +45,13 @@ COLUMNS: tuple[Column[RunSummary], ...] = (
     Column("id", "Run", lambda r: r.id, kind="id", shrink=True),
     Column("title", "Title", lambda r: r.title, priority=7),
     Column("kind", "Kind", lambda r: r.kind, render=_kind, priority=4),
-    Column("detail", "Detail", lambda r: r.detail, render=_detail, priority=4),
+    Column("detail", "Detail", lambda r: r.detail, render=run_detail, priority=4),
     Column("episodes", "Episodes", lambda r: r.episodes, kind="number"),
     Column("tasks", "Tasks", lambda r: r.tasks, kind="number", priority=3),
     Column("policies", "Policies", lambda r: len(r.policies), kind="number", priority=5),
-    Column("oracle", "Oracle", lambda r: r.oracle.resolved if r.oracle else None, render=_oracle, priority=2),
+    Column(
+        "oracle", "Oracle", lambda r: r.oracle.resolved if r.oracle else None, render=run_oracle, priority=2
+    ),
     Column("noop", "No-op", lambda r: r.noop.max_reward if r.noop else None, kind="reward", priority=3),
     Column(
         "cheat", "Best cheat", lambda r: r.cheats.max_reward if r.cheats else None, kind="reward", priority=2
@@ -61,7 +63,7 @@ COLUMNS: tuple[Column[RunSummary], ...] = (
         kind="number",
         priority=5,
     ),
-    Column("violations", "Violations", lambda r: r.violations, render=_violations),
+    Column("violations", "Violations", lambda r: r.violations, render=run_violations),
     Column("ran", "Ran", lambda r: r.ran_to or r.ran_from, render=_ran, priority=3),
 )
 
