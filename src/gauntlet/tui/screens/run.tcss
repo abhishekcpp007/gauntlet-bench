@@ -1,0 +1,24 @@
+/* Run: the facts and trust numbers on top, the tabs below. */
+
+RunScreen #run-top {
+    height: auto;
+    padding: 1 1 0 1;
+}
+
+RunScreen #run-facts {
+    padding: 0;
+}
+
+RunScreen #run-stats {
+    width: 21;
+    height: auto;
+    padding: 0 0 0 4;
+}
+
+RunScreen #run-tabs {
+    margin-top: 1;
+}
+
+RunScreen TabPane > DataGrid {
+    height: 1fr;
+}
