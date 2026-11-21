@@ -124,6 +124,18 @@ App.-ascii FooterKey.-command-palette {
     border-left: none;
 }
 
+App.-ascii Matrix > CellStatus {
+    border-top: ascii $border-blurred;
+}
+
+App.-ascii Collapsible {
+    border-top: ascii $background;
+}
+
+App.-ascii #help-box {
+    border: ascii $border;
+}
+
 App.-ascii Toast {
     border-left: ascii $primary;
 }

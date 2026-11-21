@@ -120,7 +120,7 @@ class Legend(Themed):
 
     def render(self) -> RenderableType:
         look = self.look
-        text = Text(end="", no_wrap=True, overflow="ellipsis")
+        text = Text(end="", no_wrap=True, overflow=look.overflow)
         marks = [RESOLVED, VERDICTS["cheating"], VERDICTS["suspicious"], TAMPERED]
         if self.missing:
             marks.append(NOT_PLAYED)
@@ -207,9 +207,6 @@ class Matrix(Themed):
     Matrix > CellStatus {
         border-top: solid $border-blurred;
         max-height: 3;
-    }
-    App.-ascii Matrix > CellStatus {
-        border-top: ascii $border-blurred;
     }
     """
 

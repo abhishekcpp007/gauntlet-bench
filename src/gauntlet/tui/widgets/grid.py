@@ -356,7 +356,7 @@ class DataGrid(Themed, Generic[R]):
         if text.cell_len > width:
             if column.kind in ("id", "text"):
                 return Text(fmt.middle(text.plain, width, look.glyphs.ellipsis), style=text.style, end="")
-            text.truncate(width, overflow="ellipsis")
+            text.truncate(width, overflow=look.overflow)
         return text
 
     def _rebuild(self) -> None:

@@ -224,7 +224,7 @@ class IdList(Themed):
             return text
         rows = Table.grid(padding=(0, 1))
         rows.add_column(no_wrap=True)
-        rows.add_column()
+        rows.add_column(overflow=look.overflow)
         for test in self.ids:
             rows.add_row(look.muted(look.glyphs.bullet), fmt.safe_text(test, single_line=True))
         text.end = "\n"

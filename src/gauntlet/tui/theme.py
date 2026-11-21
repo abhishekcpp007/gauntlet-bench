@@ -271,6 +271,11 @@ class Look:
     def style(self, tone: Tone, *, bold: bool = False) -> Style:
         return Style(color=self.palette.color(tone), bold=bold)
 
+    @property
+    def overflow(self) -> Literal["crop", "ellipsis"]:
+        """How Rich should cut text that doesn't fit: its ellipsis isn't ASCII, so --ascii crops."""
+        return "crop" if self.ascii else "ellipsis"
+
     def symbol(self, mark: Mark) -> str:
         return mark.ascii if self.ascii else mark.symbol
 

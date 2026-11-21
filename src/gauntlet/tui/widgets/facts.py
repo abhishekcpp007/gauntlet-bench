@@ -79,7 +79,7 @@ class Facts(Themed, can_focus=True):
         label_width = max((len(f.label) for f in self.facts), default=0)
         grid = Table.grid(padding=(0, LABEL_GAP), expand=True)
         grid.add_column(width=label_width, no_wrap=True)
-        grid.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
+        grid.add_column(ratio=1, no_wrap=True, overflow=self.look.overflow)
         highlight = solid_color(self.app.theme_variables, "block-cursor-background")
         cursor = Style(bgcolor=highlight) if highlight else Style(reverse=True)
         for index, fact in enumerate(self.facts):
