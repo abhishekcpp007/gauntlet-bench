@@ -41,7 +41,7 @@ CELL_PADDING = 1
 CELL_SIDES = 2
 MIN_SHRINK_WIDTH = 8
 SCROLLBAR_WIDTH = 1
-MAX_AUTO_WIDTH = 60
+
 NUMERIC_KINDS: frozenset[ColumnKind] = frozenset({"number", "reward"})
 DESCENDING_FIRST: frozenset[ColumnKind] = frozenset({"number", "reward", "date"})
 ESSENTIAL = 1
@@ -289,7 +289,7 @@ class DataGrid(Themed, Generic[R]):
             return column.width
         header = cell_len(column.label) + cell_len(look.glyphs.descending) + 1
         widest = max((self._cell(column, row, look).cell_len for row in self._rows), default=0)
-        return min(max(header, widest), MAX_AUTO_WIDTH)
+        return max(header, widest)
 
     def _available(self) -> int:
         return max(self.size.width - SCROLLBAR_WIDTH, 0)

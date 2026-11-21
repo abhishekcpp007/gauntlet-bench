@@ -244,26 +244,20 @@ class TestSummary(Themed):
         return grid
 
 
-def finding_columns(findings: Iterable[Finding]) -> tuple[Column[tuple[int, Finding]], ...]:
-    """The findings table's columns, with the message as wide as the longest one."""
-    widest = max((len(f.message) for f in findings), default=0)
-    return (
-        Column("severity", "Severity", lambda r: SEVERITIES[r[1].severity], kind="mark"),
-        Column("rule", "Rule", lambda r: r[1].rule, kind="id"),
-        Column("message", "Message", lambda r: r[1].message, width=widest or None, shrink=True),
-        Column("file", "File", lambda r: r[1].file, kind="id", priority=3),
-        Column("step", "Step", lambda r: r[1].step, kind="number", priority=2),
-    )
+FINDING_COLUMNS: tuple[Column[tuple[int, Finding]], ...] = (
+    Column("severity", "Severity", lambda r: SEVERITIES[r[1].severity], kind="mark"),
+    Column("rule", "Rule", lambda r: r[1].rule, kind="id"),
+    Column("message", "Message", lambda r: r[1].message, shrink=True),
+    Column("file", "File", lambda r: r[1].file, kind="id", priority=3),
+    Column("step", "Step", lambda r: r[1].step, kind="number", priority=2),
+)
 
 
-def test_columns(tests: Iterable[TestStatus]) -> tuple[Column[TestStatus], ...]:
-    """The test list's columns, with the id column as wide as the longest id so it isn't cut early."""
-    widest = max((len(t.id) for t in tests), default=0)
-    return (
-        Column("status", "Status", lambda t: TEST_MARKS[t.status], kind="mark"),
-        Column("class", "Class", lambda t: t.test_class.upper() if t.test_class else None),
-        Column("id", "Test", lambda t: t.id, kind="id", width=widest or None, shrink=True),
-    )
+TEST_COLUMNS: tuple[Column[TestStatus], ...] = (
+    Column("status", "Status", lambda t: TEST_MARKS[t.status], kind="mark"),
+    Column("class", "Class", lambda t: t.test_class.upper() if t.test_class else None),
+    Column("id", "Test", lambda t: t.id, kind="id", shrink=True),
+)
 
 
 def _facets(values: Iterable[str]) -> tuple[Facet, ...]:
@@ -411,7 +405,7 @@ class EpisodeScreen(DataScreen[EpisodeDetail]):
             )
             children.append(Static(intro, markup=False, classes="intro"))
             grid: DataGrid[tuple[int, Finding]] = DataGrid(
-                finding_columns(data.findings), key=lambda r: str(r[0]), what="rule id", id="findings"
+                FINDING_COLUMNS, key=lambda r: str(r[0]), what="rule id", id="findings"
             )
             grid.set_rows(list(enumerate(data.findings)))
             pane = Vertical(grid, id="findings-pane", classes="pane")
@@ -520,7 +514,7 @@ class EpisodeScreen(DataScreen[EpisodeDetail]):
         ]
         bar = FilterBar(groups, placeholder="type to filter test ids", id="tests-filter")
         grid: DataGrid[TestStatus] = DataGrid(
-            test_columns(self.tests),
+            TEST_COLUMNS,
             key=lambda t: t.id,
             empty=Empty("No tests were recorded for this episode."),
             what="test id",

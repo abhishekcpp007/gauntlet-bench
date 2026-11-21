@@ -146,3 +146,11 @@ async def test_untrusted_cells_render_literally():
 async def test_footer_bindings_are_declared():
     keys = {b.key for b in GridTable.BINDINGS} | {b.key for b in DataGrid.BINDINGS}
     assert {"enter", "j", "k", "g", "G", "s", "S", "c"} <= keys
+
+
+async def test_columns_use_the_room_a_wide_terminal_has():
+    long_id = "tests/test_" + "x" * 150 + ".py::test_case"
+    app = GridApp(rows=(make_task_row(instance_id=long_id),))
+    async with app.run_test(size=(260, 8)) as pilot:
+        await pilot.pause()
+        assert app.grid.table.get_row_at(0)[0].plain == long_id
