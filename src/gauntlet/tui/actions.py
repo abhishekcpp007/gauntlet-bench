@@ -33,6 +33,7 @@ from gauntlet.harness.policies import PATCH_PREFIX, ClaudePolicy, make_policy
 
 from .jobtypes import ActionInfo, JobSpec, Need, Output, Step
 from .models import Finding, Verdict
+from .store import CHEAT_PREFIX, LEAK_CHECKS
 from .workspace import PRS_FILE, REJECTED_FILE, TASKS_FILE, Kind, Workspace, WorkspaceError, check_name
 
 ONE_TASK_FILE = "task.jsonl"
@@ -54,6 +55,7 @@ CATEGORIES = ("swe", "lht")
 TRY_PATCH_ATTEMPT = 0
 TRY_PATCH_WORKERS = 1
 
+AT_LEAST_ONE = 1
 MAX_LIMIT = 1000
 MAX_FIX_RUNS = 10
 MAX_WORKERS = 32
@@ -73,6 +75,9 @@ REPO_PATH_PATTERN = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./-]*")
 RANGE_SEPARATOR = ".."
 URL_PREFIXES = ("https://", "http://", "git@", "ssh://", "file://")
 RANGE_LINE = re.compile(r"(?P<a>[^\t]+)\t(?P<b>[^\t]+)\t(?P<prs>\d+) PRs\t(?P<direct>\d+) direct commits")
+
+LEAK_CHECK_COUNT = len(LEAK_CHECKS)
+CHEAT_COUNT = sum(p.startswith(CHEAT_PREFIX) for p in CALIBRATION_POLICIES)
 
 SANDBOX: tuple[Need, ...] = ("docker", "network")
 NETWORK: tuple[Need, ...] = ("network",)
@@ -103,7 +108,7 @@ ACTIONS: tuple[ActionInfo, ...] = (
         "leakcheck",
         "Leak check",
         "check",
-        "Runs the 8 leak checks again on a task set, in a sandbox. Docker and network.",
+        f"Runs the {LEAK_CHECK_COUNT} leak checks again on a task set, in a sandbox. Docker and network.",
         SANDBOX,
     ),
     ActionInfo(
@@ -118,7 +123,7 @@ ACTIONS: tuple[ActionInfo, ...] = (
         "calibrate",
         "Calibrate",
         "check",
-        "Pits the real fix and a blank answer against the 9 cheats and checks the grader scores "
+        f"Pits the real fix and a blank answer against the {CHEAT_COUNT} cheats and checks the grader scores "
         "them right. Docker, and it takes a while.",
         SANDBOX,
     ),
@@ -331,9 +336,9 @@ def make_tasks(
     if not checked:
         raise ActionError("Add at least one repo")
     after = check_date(merged_after) if merged_after else None
-    check_int("The PR limit", limit, 1, MAX_LIMIT)
+    check_int("The PR limit", limit, AT_LEAST_ONE, MAX_LIMIT)
     check_choice("The test scope", scope, SCOPES)
-    check_int("Fix runs", fix_runs, 1, MAX_FIX_RUNS)
+    check_int("Fix runs", fix_runs, AT_LEAST_ONE, MAX_FIX_RUNS)
     check_python(python)
     folder = workspace.path_for("tasks", _name(workspace, "tasks", name, checked[0]))
     prs, tasks, rejected = folder / PRS_FILE, folder / TASKS_FILE, folder / REJECTED_FILE
@@ -382,7 +387,7 @@ def list_ranges(
     repo = check_repo(repo)
     url = check_repo_url(repo_url) if repo_url else None
     if last is not None:
-        check_int("Newest ranges", last, 1, MAX_LAST)
+        check_int("Newest ranges", last, AT_LEAST_ONE, MAX_LAST)
     argv = (
         "ranges",
         "--repo",
@@ -438,12 +443,12 @@ def make_lht_tasks(
     repo = check_repo(repo)
     specs = tuple(_range_spec(r) for r in ranges)
     if last is not None:
-        check_int("Newest ranges", last, 1, MAX_LAST)
+        check_int("Newest ranges", last, AT_LEAST_ONE, MAX_LAST)
     url = check_repo_url(repo_url) if repo_url else None
     check_python(python)
-    check_int("Fix runs", fix_runs, 1, MAX_FIX_RUNS)
-    check_int("Max PRs", max_prs, 1, MAX_LHT_PRS)
-    check_int("Max gold lines", max_gold_lines, 1, MAX_GOLD_LINES)
+    check_int("Fix runs", fix_runs, AT_LEAST_ONE, MAX_FIX_RUNS)
+    check_int("Max PRs", max_prs, AT_LEAST_ONE, MAX_LHT_PRS)
+    check_int("Max gold lines", max_gold_lines, AT_LEAST_ONE, MAX_GOLD_LINES)
     check_choice("The test scope", scope, SCOPES)
     folder = workspace.path_for("tasks", _name(workspace, "tasks", name, f"{repo}-lht"))
     tasks, rejected = folder / TASKS_FILE, folder / REJECTED_FILE
@@ -524,7 +529,7 @@ def calibrate(
     if seed is not None:
         check_word("The seed", seed)
     specs = check_policies(policies)
-    check_int("Workers", workers, 1, MAX_WORKERS)
+    check_int("Workers", workers, AT_LEAST_ONE, MAX_WORKERS)
     out = workspace.path_for("runs", _name(workspace, "runs", name, f"calibrate-{tasks.parent.name}"))
     argv = (
         "calibrate",
@@ -573,12 +578,12 @@ def run_policies(
     how the harness resumes."""
     tasks = check_file("The task file", tasks_file)
     specs = check_policies(policies)
-    check_int("Attempts", attempts, 1, MAX_ATTEMPTS)
-    check_int("Workers", workers, 1, MAX_WORKERS)
+    check_int("Attempts", attempts, AT_LEAST_ONE, MAX_ATTEMPTS)
+    check_int("Workers", workers, AT_LEAST_ONE, MAX_WORKERS)
     if category is not None:
         check_choice("The category", category, CATEGORIES)
     if max_steps is not None:
-        check_int("Max steps", max_steps, 1, MAX_STEPS)
+        check_int("Max steps", max_steps, AT_LEAST_ONE, MAX_STEPS)
     for what, ceiling in (
         ("Max episodes", max_episodes),
         ("Max tokens", max_tokens),
