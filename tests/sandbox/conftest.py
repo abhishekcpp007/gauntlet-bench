@@ -1,7 +1,7 @@
 import docker
 import pytest
 
-from gauntlet_sandbox import Sandbox, SandboxConfig
+from gauntlet.sandbox import Sandbox, SandboxConfig
 
 IMAGE = "python:3.12-slim"
 

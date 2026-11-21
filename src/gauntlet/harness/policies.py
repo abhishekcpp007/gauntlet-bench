@@ -618,8 +618,8 @@ _gauntlet_zoo_snapshot()
 
 def _source_target(task: Any) -> str | None:
     """The first non-test source file the real fix touches: imported by the very tests we grade."""
-    from gauntlet_repo2env import split_patch
-    from gauntlet_repo2env.repo import is_source_path
+    from gauntlet.envs import split_patch
+    from gauntlet.envs.repo import is_source_path
 
     if task.language == "node":
         for paths, _ in split_patch(task.gold_patch):

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from gauntlet_harness.stats import bootstrap_pass_at_k, mcnemar, pass_at_k_per_task, wilson
+from gauntlet.harness.stats import bootstrap_pass_at_k, mcnemar, pass_at_k_per_task, wilson
 
 
 def test_wilson_matches_known_values():

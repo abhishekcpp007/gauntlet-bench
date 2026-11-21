@@ -313,8 +313,8 @@ All weights live in `RewardConfig`.
 ### Plain Python
 
 ```python
-from gauntlet_harness.env import SWEEnv
-from gauntlet_harness.schema import HarnessTask
+from gauntlet.harness.env import SWEEnv
+from gauntlet.harness.schema import HarnessTask
 
 task = HarnessTask.model_validate_json(open("tasks.jsonl").readline())
 env = SWEEnv(task, max_steps=60)
@@ -333,7 +333,7 @@ Edit actions take the same fields as Anthropic's text editor tool, so a Claude t
 
 ```python
 import gymnasium as gym
-import gauntlet_harness.gym  # registers gauntlet/SWE-v0
+import gauntlet.harness.gym  # registers gauntlet/SWE-v0
 
 env = gym.make("gauntlet/SWE-v0", tasks="datasets/gauntlet-live-2026-11/tasks.jsonl", max_steps=60)
 obs, info = env.reset(seed=0)  # the seed picks the task

@@ -3,7 +3,7 @@
 from .detect import Stack, detect, install_script
 from .env import BuildFailed, EnvSpec, UnsupportedRepo, base_image_for, build_env, check_supported
 from .repo import GitError, Repo2EnvError
-from .tasks import (
+from .patches import (
     EvalResult,
     PatchFailed,
     Task,

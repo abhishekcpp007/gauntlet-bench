@@ -16,7 +16,7 @@ import pytest
 
 openai = pytest.importorskip("openai")
 
-from gauntlet_harness.policies import make_policy  # noqa: E402
+from gauntlet.harness.policies import make_policy  # noqa: E402
 
 SCRIPT = [
     {"tool": ("bash", '{"command": "ls -la"}')},

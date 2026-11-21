@@ -3,9 +3,9 @@
 import gymnasium
 import pytest
 
-import gauntlet_harness.gym  # noqa: F401  registers gauntlet/SWE-v0
-from gauntlet_harness.gym import GauntletSWEEnv
-from gauntlet_harness.schema import HarnessTask, PRInfo
+import gauntlet.harness.gym  # noqa: F401  registers gauntlet/SWE-v0
+from gauntlet.harness.gym import GauntletSWEEnv
+from gauntlet.harness.schema import HarnessTask, PRInfo
 
 
 def task(n):

@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import Literal
 
-from gauntlet_sandbox import Trajectory
+from gauntlet.sandbox import Trajectory
 
 from .diff import parse_patch
 

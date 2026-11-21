@@ -11,8 +11,8 @@ from types import SimpleNamespace
 
 import docker
 
-from gauntlet_harness.build import build_task
-from gauntlet_harness.schema import HarnessTask
+from gauntlet.harness.build import build_task
+from gauntlet.harness.schema import HarnessTask
 
 from .fakerepo import GOLD_LINE, ISSUE_10, make_pr_repo
 

@@ -10,8 +10,8 @@ from pathlib import Path
 
 import docker
 from docker.errors import ImageNotFound
-from gauntlet_repo2env.repo import Repo, archive, clone, default_cache, slug_for
-from gauntlet_sandbox import Sandbox, SandboxConfig
+from gauntlet.envs.repo import Repo, archive, clone, default_cache, slug_for
+from gauntlet.sandbox import Sandbox, SandboxConfig
 
 from .runners import PYTEST, runner_for
 from .schema import HarnessTask

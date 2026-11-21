@@ -9,7 +9,7 @@ others mostly do not.
 from __future__ import annotations
 
 import pytest
-from gauntlet_repo2env.testrun import parse_junit
+from gauntlet.envs.testrun import parse_junit
 
 PYTEST = """<?xml version="1.0" encoding="utf-8"?>
 <testsuites><testsuite name="pytest" tests="2">

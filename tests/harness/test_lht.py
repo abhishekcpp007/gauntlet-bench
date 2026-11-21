@@ -9,10 +9,10 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from gauntlet_repo2env.repo import Repo, clone
+from gauntlet.envs.repo import Repo, clone
 
-from gauntlet_harness.grading import milestone_rates
-from gauntlet_harness.lht import (
+from gauntlet.harness.grading import milestone_rates
+from gauntlet.harness.lht import (
     attribute,
     prs_in_range,
     range_id,
@@ -23,10 +23,10 @@ from gauntlet_harness.lht import (
     units_in_order,
     unmask,
 )
-from gauntlet_harness.profiles import LHT, SWE, profile_for
-from gauntlet_harness.report import render_html, render_markdown, summarize
-from gauntlet_harness.reward import compute_reward
-from gauntlet_harness.schema import (
+from gauntlet.harness.profiles import LHT, SWE, profile_for
+from gauntlet.harness.report import render_html, render_markdown, summarize
+from gauntlet.harness.reward import compute_reward
+from gauntlet.harness.schema import (
     EpisodeResult,
     GradeResult,
     HarnessTask,
@@ -46,7 +46,7 @@ def repo(tmp_path_factory) -> Repo:
 
 
 def _sha(repo: Repo, ref: str) -> str:
-    from gauntlet_repo2env.repo import git
+    from gauntlet.envs.repo import git
 
     return git(repo.path, "rev-parse", f"{ref}^{{commit}}").strip()
 
@@ -313,7 +313,7 @@ def test_single_category_report_keeps_its_old_shape():
 
 @functools.cache
 def _built():
-    from gauntlet_harness.lht import build_range_task
+    from gauntlet.harness.lht import build_range_task
 
     root = Path(tempfile.mkdtemp(prefix="gauntlet-lht-"))
     path = make_release_repo(root)
@@ -362,7 +362,7 @@ def test_release_range_becomes_an_lht_task(built):
 
 @pytest.mark.docker
 def test_lht_task_passes_the_leak_checks(built):
-    from gauntlet_harness.leakcheck import leakcheck
+    from gauntlet.harness.leakcheck import leakcheck
 
     root, task = built
     report = leakcheck(task, cache_dir=root / "cache")
@@ -371,7 +371,7 @@ def test_lht_task_passes_the_leak_checks(built):
 
 @pytest.mark.docker
 def test_gold_resolves_and_half_a_release_earns_half(built):
-    from gauntlet_harness.grading import grade_patch
+    from gauntlet.harness.grading import grade_patch
 
     root, task = built
     gold = grade_patch(task, task.gold_patch, cache_dir=root / "cache")

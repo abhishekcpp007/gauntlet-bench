@@ -16,12 +16,12 @@ from types import SimpleNamespace
 import docker
 import pytest
 
-from gauntlet_harness.build import build_task
-from gauntlet_harness.env import SWEEnv
-from gauntlet_harness.grading import grade_patch
-from gauntlet_harness.leakcheck import leakcheck
-from gauntlet_harness.policies import make_policy
-from gauntlet_harness.schema import HarnessTask, Rejected
+from gauntlet.harness.build import build_task
+from gauntlet.harness.env import SWEEnv
+from gauntlet.harness.grading import grade_patch
+from gauntlet.harness.leakcheck import leakcheck
+from gauntlet.harness.policies import make_policy
+from gauntlet.harness.schema import HarnessTask, Rejected
 
 from .fakejsrepo import F2P, F2P_SNAP, GOLD_LINE, ISSUE_10, N2P, P2P, S2P, make_js_pr_repo
 

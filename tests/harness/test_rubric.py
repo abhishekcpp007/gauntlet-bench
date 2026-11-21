@@ -2,8 +2,8 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from gauntlet_harness.rubric import RULES, RubricContext, combine, default_rubric, score_rubric, similarity
-from gauntlet_harness.schema import ItemScore, RubricItem
+from gauntlet.harness.rubric import RULES, RubricContext, combine, default_rubric, score_rubric, similarity
+from gauntlet.harness.schema import ItemScore, RubricItem
 
 from .judging_helpers import (
     CONFTEST_HACK,

@@ -79,7 +79,7 @@ def cmd_collect(args: argparse.Namespace) -> int:
                 print(f"error: GitHub rate limit, resets at {e.reset_at}.")
                 print("Set GITHUB_TOKEN or pass --git-fallback.")
                 return 1
-            from gauntlet_repo2env.repo import clone
+            from gauntlet.envs.repo import clone
 
             _say(f"rate limited, falling back to git history for {repo}")
             path = clone(f"https://github.com/{repo}").path
@@ -153,7 +153,7 @@ def _keep(task: HarnessTask, args: argparse.Namespace, out: Path, rej: Path, cli
 
 def cmd_ranges(args: argparse.Namespace) -> int:
     """List the release ranges a repo offers, newest last, as `from to` pairs."""
-    from gauntlet_repo2env.repo import clone, git
+    from gauntlet.envs.repo import clone, git
 
     from .lht import prs_in_range, release_ranges
 
@@ -167,7 +167,7 @@ def cmd_ranges(args: argparse.Namespace) -> int:
 
 
 def cmd_build_lht(args: argparse.Namespace) -> int:
-    from gauntlet_repo2env.repo import clone
+    from gauntlet.envs.repo import clone
 
     from .lht import build_range_task, release_ranges
 
@@ -233,7 +233,7 @@ def cmd_check_envs(args: argparse.Namespace) -> int:
     `ensure_image` rebuilds a different env and refuses to grade on it, but only on the first
     machine without the image, long after the change that broke it.
     """
-    from gauntlet_repo2env.repo import clone
+    from gauntlet.envs.repo import clone
 
     from .build import env_fingerprint, fetch_commit
 

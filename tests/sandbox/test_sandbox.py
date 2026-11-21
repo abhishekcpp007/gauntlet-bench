@@ -2,8 +2,8 @@ import pytest
 from docker.constants import DEFAULT_TIMEOUT_SECONDS
 from docker.errors import NotFound
 
-from gauntlet_sandbox import Sandbox, SandboxConfig, SandboxError, Trajectory
-from gauntlet_sandbox.sandbox import DOCKER_API_TIMEOUT
+from gauntlet.sandbox import Sandbox, SandboxConfig, SandboxError, Trajectory
+from gauntlet.sandbox.sandbox import DOCKER_API_TIMEOUT
 
 from .conftest import IMAGE
 

@@ -8,7 +8,7 @@ import shlex
 import xml.etree.ElementTree as ET
 from pathlib import PurePosixPath
 
-from gauntlet_sandbox import Sandbox
+from gauntlet.sandbox import Sandbox
 from pydantic import BaseModel, Field
 
 JUNIT_PATH = "/tmp/gauntlet-junit.xml"

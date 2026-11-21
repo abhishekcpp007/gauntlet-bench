@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from gauntlet_sandbox import Trajectory, TrajectoryHeader
+from gauntlet.sandbox import Trajectory, TrajectoryHeader
 
 
 def _header():

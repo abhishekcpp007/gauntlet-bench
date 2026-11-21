@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from gauntlet_repo2env import (
+from gauntlet.envs import (
     UnsupportedRepo,
     build_env,
     detect,
@@ -13,9 +13,9 @@ from gauntlet_repo2env import (
     strip_test_changes,
     suite_command,
 )
-from gauntlet_repo2env.detect import _node_major, _pnpm_packages
-from gauntlet_repo2env.env import base_image_for, check_supported
-from gauntlet_repo2env.repo import clone, is_source_path, is_test_module, is_test_path, resolve
+from gauntlet.envs.detect import _node_major, _pnpm_packages
+from gauntlet.envs.env import base_image_for, check_supported
+from gauntlet.envs.repo import clone, is_source_path, is_test_module, is_test_path, resolve
 
 from .conftest import _commit, _git
 
@@ -178,7 +178,7 @@ def _diff(path: str) -> str:
 
 
 def test_a_patch_cannot_touch_the_runner_or_its_config():
-    from gauntlet_repo2env import Task
+    from gauntlet.envs import Task
 
     task = Task(
         instance_id="x", repo="r", image="i", workdir="/w", base_commit="a", solution_commit="b",
@@ -232,7 +232,7 @@ def test_a_pnpm_settings_file_is_not_a_workspace(tmp_path):
 
 
 def test_no_package_manager_cache_is_left_in_the_image():
-    from gauntlet_repo2env.env import PACKAGE_CACHES
+    from gauntlet.envs.env import PACKAGE_CACHES
 
     # pnpm's content store: radashi #493 was rejected by the leak check for a line found there
     assert "/root/.local/share/pnpm" in PACKAGE_CACHES
@@ -245,7 +245,7 @@ def test_an_end_of_life_node_is_raised_to_one_that_still_builds(tmp_path):
 
 
 def test_runner_config_files_are_named():
-    from gauntlet_repo2env import is_js_runner_config
+    from gauntlet.envs import is_js_runner_config
 
     assert all(is_js_runner_config(p) for p in ("vitest.config.ts", "sub/vite.config.mjs", "vitest.setup.js"))
     assert not any(is_js_runner_config(p) for p in ("package.json", "src/config.ts", "tsconfig.json"))
@@ -276,7 +276,7 @@ def test_the_jest_command_does_not_go_through_the_repo():
 
 
 def test_a_jest_report_reads_like_a_vitest_one():
-    from gauntlet_repo2env import parse_report
+    from gauntlet.envs import parse_report
 
     report = {
         "testResults": [
@@ -304,7 +304,7 @@ def test_a_jest_report_reads_like_a_vitest_one():
 
 
 def test_junit_xml_still_goes_to_the_junit_parser():
-    from gauntlet_repo2env import parse_report
+    from gauntlet.envs import parse_report
 
     xml = '<testsuite><testcase classname="tests.test_a" name="test_x" file="tests/test_a.py"/></testsuite>'
     assert parse_report(xml) == {"tests/test_a.py::test_x": "passed"}

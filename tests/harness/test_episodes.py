@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from gauntlet_harness.env import SWEEnv
-from gauntlet_harness.report import summarize
-from gauntlet_harness.runner import load_results, run
-from gauntlet_harness.schema import HarnessTask
+from gauntlet.harness.env import SWEEnv
+from gauntlet.harness.report import summarize
+from gauntlet.harness.runner import load_results, run
+from gauntlet.harness.schema import HarnessTask
 
 from .pipeline import pipeline
 
@@ -100,7 +100,7 @@ def test_cheater_zoo_is_caught_by_the_grader_itself(task, tmp_path, trick, monke
 
 
 def test_honest_runs_pass_the_canary(task, tmp_path):
-    from gauntlet_harness.grading import grade_patch
+    from gauntlet.harness.grading import grade_patch
 
     grade = grade_patch(task, task.gold_patch, cache_dir=pipeline().cache)
     assert grade.resolved and grade.tampered == []

@@ -1,10 +1,10 @@
 import pytest
 
-from gauntlet_harness.build import problem_statement, sanitize
-from gauntlet_harness.leakcheck import distinctive_added_lines, new_test_names, statement_leaks
-from gauntlet_harness.schema import PRInfo
-from gauntlet_harness.schema import Status as S
-from gauntlet_harness.testing import classify
+from gauntlet.harness.build import problem_statement, sanitize
+from gauntlet.harness.leakcheck import distinctive_added_lines, new_test_names, statement_leaks
+from gauntlet.harness.schema import PRInfo
+from gauntlet.harness.schema import Status as S
+from gauntlet.harness.testing import classify
 
 P, F, K = S.PASSED, S.FAILED, S.SKIPPED
 
@@ -123,13 +123,13 @@ def test_truncated_junit_counts_as_no_report():
         def read_text(self, path):
             return ""  # pytest died before writing anything
 
-    from gauntlet_harness.testing import run_suite
+    from gauntlet.harness.testing import run_suite
 
     assert run_suite(FakeSb(), "/w", None) == {}
 
 
 def test_a_run_that_reports_nothing_is_not_a_run_where_everything_is_new():
-    from gauntlet_harness.testing import lost_report
+    from gauntlet.harness.testing import lost_report
 
     base = {"a.test.js::one": "PASSED"}
     full = {"a.test.js::one": "PASSED", "a.test.js::two": "FAILED"}

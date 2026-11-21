@@ -1,4 +1,4 @@
-from gauntlet_sandbox import Trajectory, TrajectoryHeader
+from gauntlet.sandbox import Trajectory, TrajectoryHeader
 
 WORKDIR = "/workspace/repo"
 

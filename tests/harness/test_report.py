@@ -2,8 +2,8 @@ from datetime import date
 
 import pytest
 
-from gauntlet_harness.report import pass_at_k, render_html, render_markdown, summarize
-from gauntlet_harness.schema import EpisodeResult, GradeResult
+from gauntlet.harness.report import pass_at_k, render_html, render_markdown, summarize
+from gauntlet.harness.schema import EpisodeResult, GradeResult
 
 
 def ep(task, policy, attempt, resolved, *, cheat="clean", merged="2026-03-01T00:00:00Z", reward=None):
@@ -78,7 +78,7 @@ def test_renderers_escape(fmt):
 
 
 def _episode(task, policy, resolved, attempt=0):
-    from gauntlet_harness.schema import GradeResult
+    from gauntlet.harness.schema import GradeResult
 
     return EpisodeResult(
         episode_id=f"{task}__{policy}__{attempt}",

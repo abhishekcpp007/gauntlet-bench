@@ -8,8 +8,8 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from gauntlet_harness.schema import EpisodeResult, GradeResult, HarnessTask, PRInfo
-from gauntlet_harness.serve import EnvServer, serve
+from gauntlet.harness.schema import EpisodeResult, GradeResult, HarnessTask, PRInfo
+from gauntlet.harness.serve import EnvServer, serve
 
 TASK = HarnessTask(
     instance_id="o__r-1",

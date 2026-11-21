@@ -1,8 +1,8 @@
 import pytest
-from gauntlet_sandbox import Sandbox, SandboxConfig
+from gauntlet.sandbox import Sandbox, SandboxConfig
 
-from gauntlet_harness.leakcheck import distinctive_added_lines, leakcheck
-from gauntlet_harness.sandboxing import boot
+from gauntlet.harness.leakcheck import distinctive_added_lines, leakcheck
+from gauntlet.harness.sandboxing import boot
 
 from .pipeline import pipeline
 
@@ -74,7 +74,7 @@ def test_agent_sandbox_shape(p):
 
 
 def test_stdlib_hits_are_not_leaks():
-    from gauntlet_harness.leakcheck import from_base_image
+    from gauntlet.harness.leakcheck import from_base_image
 
     assert from_base_image("/usr/local/lib/python3.12/unittest/mock.py")
     assert from_base_image("/usr/lib/python3.11/idlelib/rpc.py")
@@ -86,7 +86,7 @@ def test_stdlib_hits_are_not_leaks():
 def test_base_lookup_fails_loudly_on_a_missing_commit(tmp_path):
     import subprocess
 
-    from gauntlet_harness.leakcheck import _present_at_base
+    from gauntlet.harness.leakcheck import _present_at_base
 
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / "a.py").write_text("def test_old(\n")
@@ -105,8 +105,8 @@ def test_base_lookup_fails_loudly_on_a_missing_commit(tmp_path):
 
 
 def test_installed_packages_only_count_when_they_are_the_project():
-    from gauntlet_harness.leakcheck import counts_as_leak, project_packages
-    from gauntlet_harness.schema import HarnessTask, PRInfo
+    from gauntlet.harness.leakcheck import counts_as_leak, project_packages
+    from gauntlet.harness.schema import HarnessTask, PRInfo
 
     task = HarnessTask(
         instance_id="pypa__packaging-1",
@@ -139,7 +139,7 @@ def test_installed_packages_only_count_when_they_are_the_project():
 
 
 def test_imports_are_not_distinctive():
-    from gauntlet_harness.leakcheck import distinctive_added_lines
+    from gauntlet.harness.leakcheck import distinctive_added_lines
 
     patch = (
         "+from typing import TYPE_CHECKING, TypeVar\n"
@@ -153,7 +153,7 @@ def test_base_lookup_sees_needles_nested_in_other_needles(tmp_path):
     """cattrs PR 777: the new test name is a substring of the hidden def line, and both exist at base."""
     import subprocess
 
-    from gauntlet_harness.leakcheck import _present_at_base
+    from gauntlet.harness.leakcheck import _present_at_base
 
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / "t.py").write_text("def test_type_names_with_quotes():\n    pass\n")

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from gauntlet_harness.report import provenance_warnings, render_markdown, summarize
-from gauntlet_harness.schema import EpisodeResult, GradeResult, Provenance
+from gauntlet.harness.report import provenance_warnings, render_markdown, summarize
+from gauntlet.harness.schema import EpisodeResult, GradeResult, Provenance
 
 
 def ep(task, policy, resolved=True, **prov):

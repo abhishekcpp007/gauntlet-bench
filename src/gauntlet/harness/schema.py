@@ -128,7 +128,7 @@ class HarnessTask(BaseModel):
 
     def to_repo2env(self) -> Any:
         """The same task in repo2env's shape, so its open_task / extract_patch / strip helpers work."""
-        from gauntlet_repo2env import Task
+        from gauntlet.envs import Task
 
         return Task(
             instance_id=self.instance_id,

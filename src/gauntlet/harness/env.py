@@ -30,10 +30,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from gauntlet_cheatcatcher import scan
-from gauntlet_cheatcatcher.models import Finding
-from gauntlet_repo2env import extract_patch
-from gauntlet_sandbox import Sandbox, Trajectory
+from gauntlet.cheatcatcher import scan
+from gauntlet.cheatcatcher.models import Finding
+from gauntlet.envs import extract_patch
+from gauntlet.sandbox import Sandbox, Trajectory
 
 from .grading import grade_patch
 from .profiles import profile_for

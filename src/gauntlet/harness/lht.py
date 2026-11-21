@@ -42,8 +42,8 @@ import time
 from pathlib import Path
 
 from docker.errors import APIError
-from gauntlet_repo2env import BuildFailed, PatchFailed, Repo2EnvError, UnsupportedRepo
-from gauntlet_repo2env.repo import (
+from gauntlet.envs import BuildFailed, PatchFailed, Repo2EnvError, UnsupportedRepo
+from gauntlet.envs.repo import (
     GitError,
     Repo,
     changed_files,
@@ -54,7 +54,7 @@ from gauntlet_repo2env.repo import (
     is_test_path,
     read_at,
 )
-from gauntlet_sandbox import SandboxError
+from gauntlet.sandbox import SandboxError
 
 from .build import Log, ensure_env, sanitize
 from .github import MERGE_SUBJECT_RE, SQUASH_SUBJECT_RE, parse_time

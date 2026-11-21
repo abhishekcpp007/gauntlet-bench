@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import pytest
 
-from gauntlet_harness.cli import calibration_violations, is_task_rot, rotted_tasks
-from gauntlet_harness.schema import EpisodeResult, GradeResult
+from gauntlet.harness.cli import calibration_violations, is_task_rot, rotted_tasks
+from gauntlet.harness.schema import EpisodeResult, GradeResult
 
 GONE = (
     "GitError: git ls-tree -r --name-only 5877d83c7ab53639f1cfb8664173219e5e5cfbf1 failed: "

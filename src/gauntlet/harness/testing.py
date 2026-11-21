@@ -25,8 +25,8 @@ from __future__ import annotations
 import shlex
 import xml.etree.ElementTree as ET
 
-from gauntlet_repo2env import PatchFailed, parse_report, suite_command
-from gauntlet_sandbox import Sandbox
+from gauntlet.envs import PatchFailed, parse_report, suite_command
+from gauntlet.sandbox import Sandbox
 from pydantic import BaseModel, Field
 
 from .schema import Status

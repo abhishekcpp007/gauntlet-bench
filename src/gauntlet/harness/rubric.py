@@ -25,9 +25,9 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
-from gauntlet_repo2env import split_patch
-from gauntlet_repo2env.repo import is_test_path
-from gauntlet_repo2env.tasks import PYTEST_CONFIG_FILES
+from gauntlet.envs import split_patch
+from gauntlet.envs.repo import is_test_path
+from gauntlet.envs.patches import PYTEST_CONFIG_FILES
 
 from .schema import GradeResult, HarnessTask, ItemScore, RubricItem, RubricScore
 
@@ -39,7 +39,7 @@ class RubricContext:
     task: HarnessTask
     patch: str
     grade: GradeResult | None = None
-    cheat_report: Any = None  # gauntlet_cheatcatcher.Report
+    cheat_report: Any = None  # gauntlet.cheatcatcher.Report
 
 
 Rule = Callable[[RubricContext], tuple[float, str]]

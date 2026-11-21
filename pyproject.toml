@@ -28,7 +28,7 @@ openai = ["openai>=2.0"]
 gym = ["gymnasium>=1.0"]
 
 [project.scripts]
-gauntlet = "gauntlet_harness.cli:main"
+gauntlet = "gauntlet.harness.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/abhishekcpp007/gauntlet-harness"
@@ -44,7 +44,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/gauntlet_harness"]
+packages = ["src/gauntlet/harness"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -61,4 +61,4 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/gauntlet_harness/report.py" = ["E501"]  # the inline HTML template
+"src/gauntlet/harness/report.py" = ["E501"]  # the inline HTML template

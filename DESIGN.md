@@ -2,7 +2,7 @@
 
 One harness that turns recently merged public GitHub PRs into leak-free RL environments, runs model policies in them, records trajectories, and judges each episode on test transitions (F2P / N2P / S2P / P2P) plus a rubric.
 
-Shared data shapes live in `src/gauntlet_harness/schema.py`. Don't change field names there without updating every module.
+Shared data shapes live in `src/gauntlet/harness/schema.py`. Don't change field names there without updating every module.
 
 ## Pipeline
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from gauntlet_harness.schema import HarnessTask, Rejected
+from gauntlet.harness.schema import HarnessTask, Rejected
 
 from .fakerepo import BASE_CALC, GOLD_LINE, ISSUE_10
 from .pipeline import pipeline
@@ -70,8 +70,8 @@ def test_statement_that_quotes_the_fix(p):
 
 
 def test_shared_env_fingerprint(p):
-    from gauntlet_harness.build import env_fingerprint
-    from gauntlet_harness.sandboxing import cached_clone
+    from gauntlet.harness.build import env_fingerprint
+    from gauntlet.harness.sandboxing import cached_clone
 
     repo = cached_clone(str(p.repo), p.cache)
     task = p.results[1]
@@ -83,9 +83,9 @@ def test_shared_env_fingerprint(p):
 
 
 def test_build_cli_survives_a_crashing_pr(tmp_path, monkeypatch):
-    import gauntlet_harness.build as build
-    from gauntlet_harness.cli import main
-    from gauntlet_harness.schema import PRInfo
+    import gauntlet.harness.build as build
+    from gauntlet.harness.cli import main
+    from gauntlet.harness.schema import PRInfo
 
     def boom(*a, **k):
         raise ValueError("no element found")
@@ -100,7 +100,7 @@ def test_build_cli_survives_a_crashing_pr(tmp_path, monkeypatch):
 
 
 def test_full_suite_with_no_report_falls_back_to_changed_tests(p, monkeypatch):
-    import gauntlet_harness.build as build
+    import gauntlet.harness.build as build
 
     real = build.run_suite
 
@@ -118,7 +118,7 @@ def test_a_task_rebuilds_its_missing_env_image(p):
     """Task files travel (Gauntlet Live, CI runners), images don't. Booting must rebuild, not pull."""
     import docker
 
-    from gauntlet_harness.sandboxing import ensure_image
+    from gauntlet.harness.sandboxing import ensure_image
 
     task = p.results[1].model_copy(update={"image": "gauntlet-harness-env-test:moved"})
     client = docker.from_env()
@@ -142,7 +142,7 @@ def test_parallel_workers_share_one_clone(p, tmp_path):
     """Seen on the first nightly run: three workers cloned at once and two died on 'File exists'."""
     from concurrent.futures import ThreadPoolExecutor
 
-    from gauntlet_harness.sandboxing import cached_clone
+    from gauntlet.harness.sandboxing import cached_clone
 
     with ThreadPoolExecutor(6) as pool:
         repos = list(pool.map(lambda _: cached_clone(str(p.repo), tmp_path), range(6)))

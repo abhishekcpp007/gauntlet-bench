@@ -24,7 +24,7 @@ from pathlib import Path
 
 import docker
 from docker.errors import APIError, ImageNotFound
-from gauntlet_repo2env import (
+from gauntlet.envs import (
     BuildFailed,
     PatchFailed,
     Repo2EnvError,
@@ -33,8 +33,8 @@ from gauntlet_repo2env import (
     check_supported,
     is_js_runner_config,
 )
-from gauntlet_repo2env.detect import detect, install_script
-from gauntlet_repo2env.repo import (
+from gauntlet.envs.detect import detect, install_script
+from gauntlet.envs.repo import (
     GitError,
     Repo,
     changed_files,
@@ -45,7 +45,7 @@ from gauntlet_repo2env.repo import (
     is_test_module,
     is_test_path,
 )
-from gauntlet_sandbox import SandboxError
+from gauntlet.sandbox import SandboxError
 
 from .leakcheck import statement_leaks
 from .sandboxing import boot
@@ -220,7 +220,7 @@ def disguise_coverage(repo: Repo, solution: str, targets: list[str]) -> dict[str
     the canary. The count is recorded so that a task set can say how exposed it is, and so a
     task with nothing renamed can be told apart from one that is fully covered.
     """
-    from gauntlet_repo2env.repo import read_at
+    from gauntlet.envs.repo import read_at
 
     from . import jstests
 

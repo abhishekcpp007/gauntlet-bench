@@ -6,9 +6,9 @@ import re
 
 import pytest
 
-from gauntlet_harness import jstests
-from gauntlet_harness.grading import Canary, Disguise
-from gauntlet_harness.schema import HarnessTask, PRInfo, Status
+from gauntlet.harness import jstests
+from gauntlet.harness.grading import Canary, Disguise
+from gauntlet.harness.schema import HarnessTask, PRInfo, Status
 
 from .fakejsrepo import F2P, FIXED_TESTS, N2P, P2P, S2P
 
@@ -385,7 +385,7 @@ def test_a_bracket_in_a_title_is_part_of_the_name():
 def test_a_version_bump_does_not_make_a_new_env():
     import json
 
-    from gauntlet_harness.build import package_json_identity
+    from gauntlet.harness.build import package_json_identity
 
     base = {
         "name": "x",

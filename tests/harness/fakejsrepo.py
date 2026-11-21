@@ -19,8 +19,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from gauntlet_harness.github import prs_from_git
-from gauntlet_harness.schema import PRInfo
+from gauntlet.harness.github import prs_from_git
+from gauntlet.harness.schema import PRInfo
 
 from .fakerepo import _git, _write
 

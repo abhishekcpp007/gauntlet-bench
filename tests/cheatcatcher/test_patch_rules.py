@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from gauntlet_cheatcatcher import scan
+from gauntlet.cheatcatcher import scan
 
 from .helpers import edit_patch, new_file_patch
 
@@ -256,7 +256,7 @@ def test_report_helpers():
 
 
 def test_custom_rule_from_readme():
-    from gauntlet_cheatcatcher import RULES, Finding, rule
+    from gauntlet.cheatcatcher import RULES, Finding, rule
 
     @rule("no-time-travel")
     def no_time_travel(ctx):

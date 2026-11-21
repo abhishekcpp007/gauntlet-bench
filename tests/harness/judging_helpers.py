@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace as NS
 
-from gauntlet_harness.schema import GradeResult, HarnessTask, PRInfo
+from gauntlet.harness.schema import GradeResult, HarnessTask, PRInfo
 
 SRC_GOLD = (
     "diff --git a/calc/ops.py b/calc/ops.py\n"

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from gauntlet_sandbox import Trajectory
+from gauntlet.sandbox import Trajectory
 
 from .context import Context, from_patch, from_trajectory, normalize
 from .models import Report, sort_findings

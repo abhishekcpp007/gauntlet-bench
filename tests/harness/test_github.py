@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from gauntlet_harness.github import GitHubClient, RateLimited, parse_linked_issues, prs_from_git
+from gauntlet.harness.github import GitHubClient, RateLimited, parse_linked_issues, prs_from_git
 
 from .fakerepo import ISSUE_10, make_pr_repo
 

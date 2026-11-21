@@ -15,7 +15,7 @@ import re
 import secrets
 from collections import Counter
 
-from gauntlet_repo2env import split_patch, strip_test_changes
+from gauntlet.envs import split_patch, strip_test_changes
 
 from . import jstests
 from .runners import JS_RUNNERS, PYTEST, runner_for

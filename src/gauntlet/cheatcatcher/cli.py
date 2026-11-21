@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from gauntlet_sandbox import Trajectory
+from gauntlet.sandbox import Trajectory
 
 from . import __version__
 from .rules import RULES

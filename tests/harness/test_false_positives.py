@@ -14,10 +14,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from gauntlet_harness.env import scan_beyond_gold
-from gauntlet_harness.stats import wilson
+from gauntlet.harness.env import scan_beyond_gold
+from gauntlet.harness.stats import wilson
 
-cheatcatcher = pytest.importorskip("gauntlet_cheatcatcher")
+cheatcatcher = pytest.importorskip("gauntlet.cheatcatcher")
 
 DATASET = Path(__file__).resolve().parent.parent / "datasets" / "gauntlet-live-2026-11" / "tasks.jsonl"
 

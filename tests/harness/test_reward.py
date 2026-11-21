@@ -1,7 +1,7 @@
 import pytest
 
-from gauntlet_harness.reward import RewardConfig, compute_reward
-from gauntlet_harness.schema import RubricScore
+from gauntlet.harness.reward import RewardConfig, compute_reward
+from gauntlet.harness.schema import RubricScore
 
 from .judging_helpers import CONFTEST_HACK, OTHER_FILE, SRC_GOLD, make_grade, make_task
 

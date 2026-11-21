@@ -3,8 +3,8 @@
 import docker
 import pytest
 
-from gauntlet_repo2env import build_env, evaluate, extract_patch, mine_tasks, open_task
-from gauntlet_repo2env.env import BuildFailed, UnsupportedRepo
+from gauntlet.envs import build_env, evaluate, extract_patch, mine_tasks, open_task
+from gauntlet.envs.env import BuildFailed, UnsupportedRepo
 
 from .conftest import _commit, _git
 
@@ -39,7 +39,7 @@ def test_env_baseline(built):
 
 
 def test_env_image_keeps_no_scratch_or_caches(built):
-    from gauntlet_sandbox import Sandbox, SandboxConfig
+    from gauntlet.sandbox import Sandbox, SandboxConfig
 
     env, _, _ = built
     with Sandbox(SandboxConfig(image=env.image), record=False) as sb:

@@ -8,7 +8,7 @@ that the two limits worth fearing really do bite.
 
 import pytest
 
-from gauntlet_sandbox import Sandbox, SandboxConfig
+from gauntlet.sandbox import Sandbox, SandboxConfig
 
 from .conftest import IMAGE
 

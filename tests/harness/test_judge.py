@@ -2,8 +2,8 @@ import anthropic
 import httpx
 import pytest
 
-from gauntlet_harness.judge import JudgeError, JudgeRefused, generate_rubric, judge_items
-from gauntlet_harness.schema import RubricItem
+from gauntlet.harness.judge import JudgeError, JudgeRefused, generate_rubric, judge_items
+from gauntlet.harness.schema import RubricItem
 
 from .judging_helpers import SRC_GOLD, FakeClient, make_grade, make_task, text_reply
 

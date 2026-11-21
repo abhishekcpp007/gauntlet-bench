@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from gauntlet_cheatcatcher import parse_patch
+from gauntlet.cheatcatcher import parse_patch
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
 

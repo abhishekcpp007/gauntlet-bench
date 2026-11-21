@@ -2,8 +2,8 @@
 
 import pytest
 
-from gauntlet_repo2env import detect, install_script, parse_junit, split_patch, strip_test_changes
-from gauntlet_repo2env.repo import clone, history, is_test_module, is_test_path, resolve, slug_for
+from gauntlet.envs import detect, install_script, parse_junit, split_patch, strip_test_changes
+from gauntlet.envs.repo import clone, history, is_test_module, is_test_path, resolve, slug_for
 
 
 @pytest.mark.parametrize(
@@ -65,7 +65,7 @@ def test_detect_python(calc_repo, tmp_path):
     ],
 )
 def test_requirements_files(path, is_req):
-    from gauntlet_repo2env.detect import _is_requirements
+    from gauntlet.envs.detect import _is_requirements
 
     assert _is_requirements(path) is is_req
 
@@ -105,7 +105,7 @@ RENAME = (
 
 
 def _task(**kw):
-    from gauntlet_repo2env import Task
+    from gauntlet.envs import Task
 
     base = dict(
         instance_id="x",
@@ -293,7 +293,7 @@ def test_c_sources_get_a_compiler(tmp_path):
 
 
 def test_c_files_only_in_tests_need_no_compiler(tmp_path, calc_repo):
-    from gauntlet_repo2env.detect import _has_native_sources
+    from gauntlet.envs.detect import _has_native_sources
 
     assert not _has_native_sources(["tests/fixture.c", "docs/x.c", "calc/__init__.py"])
     assert _has_native_sources(["src/pkg/_speedups.c"])

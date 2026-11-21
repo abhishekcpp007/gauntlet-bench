@@ -6,7 +6,7 @@ import threading
 
 import pytest
 
-from gauntlet_harness.budget import Budget, BudgetExhausted, parse_prices
+from gauntlet.harness.budget import Budget, BudgetExhausted, parse_prices
 
 
 def test_no_ceilings_never_stops():
@@ -121,7 +121,7 @@ def test_bad_prices_are_rejected(bad):
 
 
 def _task():
-    from gauntlet_harness.schema import HarnessTask
+    from gauntlet.harness.schema import HarnessTask
 
     return HarnessTask(
         instance_id="a__b-1",
@@ -151,7 +151,7 @@ def _task():
 
 def test_an_exhausted_budget_stops_before_any_sandbox_starts(tmp_path):
     """The check runs first, so a ceiling already reached costs no Docker and no API call."""
-    from gauntlet_harness.runner import run
+    from gauntlet.harness.runner import run
 
     b = Budget(max_episodes=0)
     out = run([_task()], ["noop"], out_dir=tmp_path, budget=b)
@@ -164,7 +164,7 @@ def test_an_exhausted_budget_stops_before_any_sandbox_starts(tmp_path):
 
 def test_no_budget_means_no_gate(tmp_path, monkeypatch):
     """Passing nothing leaves the runner exactly as it was: the episode reaches the sandbox."""
-    from gauntlet_harness import runner
+    from gauntlet.harness import runner
 
     seen = {}
 
@@ -185,7 +185,7 @@ def test_a_reached_ceiling_gates_before_the_sandbox(tmp_path, monkeypatch):
     Policy specs are validated once up front, which costs nothing, so the gate sits between
     that and the expensive part rather than before everything.
     """
-    from gauntlet_harness import runner
+    from gauntlet.harness import runner
 
     def boom(*args, **kwargs):
         raise AssertionError("the budget should have stopped this before here")

@@ -1,9 +1,9 @@
 """`gauntlet check-envs`: a task whose env would rebuild on another fingerprint is caught. No Docker."""
 
-from gauntlet_repo2env.repo import Repo, clone, git
+from gauntlet.envs.repo import Repo, clone, git
 
-from gauntlet_harness.build import env_fingerprint
-from gauntlet_harness.cli import main
+from gauntlet.harness.build import env_fingerprint
+from gauntlet.harness.cli import main
 
 from .fakerelease import _git, make_release_repo
 from .test_export import TASK

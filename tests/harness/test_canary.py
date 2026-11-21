@@ -4,9 +4,9 @@ import ast
 import re
 from types import SimpleNamespace
 
-from gauntlet_harness.grading import Canary
-from gauntlet_harness.policies import CANARY_AWARE
-from gauntlet_harness.schema import Status
+from gauntlet.harness.grading import Canary
+from gauntlet.harness.policies import CANARY_AWARE
+from gauntlet.harness.schema import Status
 
 FUNCS = """import pytest
 from pkg import thing
@@ -89,7 +89,7 @@ def test_the_old_canary_tells_are_gone():
     This pins the rate with an interval instead of a bare threshold, so a change that quietly
     makes the defense weaker shows up as a number moving.
     """
-    from gauntlet_harness.stats import wilson
+    from gauntlet.harness.stats import wilson
 
     fixed_body = re.compile(r"value = \d+\n\s+assert value == \d+")
     draws = 600
@@ -232,7 +232,7 @@ def test_canaries_in_a_file_that_failed_to_collect_dont_read_as_tampering():
 def test_disguise_renames_targets_and_maps_results_back():
     import secrets
 
-    from gauntlet_harness.grading import Disguise
+    from gauntlet.harness.grading import Disguise
 
     task = SimpleNamespace(
         f2p=["tests/test_m.py::test_parse[1]", "tests/test_c.py::WindowTests::test_index"],
@@ -261,7 +261,7 @@ def test_disguise_never_gives_two_targets_the_same_name():
     """boltons-434 renames 20 targets in one file. Two of them once got the same new name."""
     import secrets
 
-    from gauntlet_harness.grading import Disguise
+    from gauntlet.harness.grading import Disguise
 
     names = [f"test_case_{i}" for i in range(20)]
     source = "".join(f"def {n}():\n    pass\n\n\n" for n in names)
@@ -275,7 +275,7 @@ def test_disguise_never_gives_two_targets_the_same_name():
 
 
 def test_a_fingerprint_that_never_finishes_is_not_an_empty_tree():
-    from gauntlet_harness.grading import _fingerprint
+    from gauntlet.harness.grading import _fingerprint
 
     class Flaky:
         def __init__(self, outputs):

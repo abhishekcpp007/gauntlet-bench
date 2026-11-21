@@ -1,7 +1,7 @@
 import pytest
 
-from gauntlet_cheatcatcher import scan
-from gauntlet_cheatcatcher.cli import main
+from gauntlet.cheatcatcher import scan
+from gauntlet.cheatcatcher.cli import main
 
 from .helpers import ex, make_traj, read, write
 

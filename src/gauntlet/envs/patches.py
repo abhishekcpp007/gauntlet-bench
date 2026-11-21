@@ -14,7 +14,7 @@ import time
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 
-from gauntlet_sandbox import Sandbox, SandboxConfig
+from gauntlet.sandbox import Sandbox, SandboxConfig
 from pydantic import BaseModel, Field
 
 from .env import EnvSpec, Log

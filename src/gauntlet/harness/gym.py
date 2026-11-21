@@ -1,7 +1,7 @@
 """A Gymnasium front for SWEEnv, for RL code that expects `gymnasium.Env`.
 
     import gymnasium as gym
-    import gauntlet_harness.gym  # registers gauntlet/SWE-v0
+    import gauntlet.harness.gym  # registers gauntlet/SWE-v0
 
     env = gym.make("gauntlet/SWE-v0", tasks="tasks.jsonl")
     obs, info = env.reset(seed=0)                      # a task, picked by the seed

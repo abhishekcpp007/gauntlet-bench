@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from gauntlet_harness import runner
-from gauntlet_harness.runner import load_results, run
+from gauntlet.harness import runner
+from gauntlet.harness.runner import load_results, run
 
 from .test_budget import _task  # the same minimal task
 

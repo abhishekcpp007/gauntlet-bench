@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from gauntlet_harness import export
-from gauntlet_harness.cli import main
-from gauntlet_harness.schema import EpisodeResult, GradeResult, HarnessTask, PRInfo
+from gauntlet.harness import export
+from gauntlet.harness.cli import main
+from gauntlet.harness.schema import EpisodeResult, GradeResult, HarnessTask, PRInfo
 
 TASK = HarnessTask(
     instance_id="o__r-7",

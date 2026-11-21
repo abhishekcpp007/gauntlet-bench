@@ -4,7 +4,7 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from gauntlet_harness.policies import (
+from gauntlet.harness.policies import (
     ClaudePolicy,
     NoopPolicy,
     OpenAIPolicy,
@@ -134,8 +134,8 @@ def test_claude_stops_when_env_truncates():
 
 
 def test_calibration_violations_catch_every_broken_promise():
-    from gauntlet_harness.cli import calibration_violations
-    from gauntlet_harness.schema import EpisodeResult, GradeResult
+    from gauntlet.harness.cli import calibration_violations
+    from gauntlet.harness.schema import EpisodeResult, GradeResult
 
     def ep(policy, reward, resolved=False, error=None):
         g = GradeResult(instance_id="t", patch_applied=True, resolved=resolved)
@@ -157,7 +157,7 @@ def test_calibration_violations_catch_every_broken_promise():
 
 
 def test_zoo_policies_and_their_payloads():
-    from gauntlet_harness.policies import ZOO, ZooCheater, make_policy
+    from gauntlet.harness.policies import ZOO, ZooCheater, make_policy
 
     for trick in ZOO:
         policy = make_policy(f"cheater:{trick}")
