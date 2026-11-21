@@ -202,7 +202,7 @@ class RubricScore(BaseModel):
     items: list[ItemScore] = Field(default_factory=list)
     score: float = 0.0  # normalized to [0, 1]
     judge_model: str | None = None
-    skipped: list[str] = Field(default_factory=list)  # judge items we couldn't score (no client)
+    skipped: list[str] = Field(default_factory=list)  # judge items, which aren't scored
 
 
 class Provenance(BaseModel):

@@ -221,7 +221,7 @@ def cmd_leakcheck(args: argparse.Namespace) -> int:
 def cmd_check_envs(args: argparse.Namespace) -> int:
     """Recompute each task's env fingerprint the way a fresh machine would before rebuilding it.
 
-    A task file outlives the code that built it. If repo2env's install script for a repo moves,
+    A task file outlives the code that built it. If the install script for a repo moves,
     `ensure_image` rebuilds a different env and refuses to grade on it, but only on the first
     machine without the image, long after the change that broke it.
     """
