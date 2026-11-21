@@ -150,9 +150,7 @@ class DatasetScreen(DataScreen[tuple[DatasetDetail, tuple[TaskRow, ...]]]):
         yield Horizontal(*headline(detail, ok), id="dataset-headline")
         about = [summary.title, f"merged {fmt.date_range(summary.merged_from, summary.merged_to)}"]
         about += [f"{f.id} {fmt.count(f.count)}" for f in summary.runners]
-        line = look.muted(dot.join(about))
-        line.no_wrap, line.overflow = True, "ellipsis"
-        yield Static(line, id="dataset-about")
+        yield Static(look.muted(dot.join(about)), id="dataset-about")
         bars = funnel(detail)
         if bars:
             funnel_body: Widget = Bars(bars, id="funnel")

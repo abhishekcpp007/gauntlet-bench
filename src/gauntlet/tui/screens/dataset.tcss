@@ -10,6 +10,9 @@
 }
 
 #dataset-about {
+    height: 1;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
     padding: 0 1;
     margin-bottom: 1;
 }
