@@ -233,7 +233,7 @@ Every agent episode, validation run, leak scan and grade boots its own container
 
 ## Run it on Harbor
 
-Every task exports to [Harbor](https://github.com/harbor-framework/harbor)'s task layout, so any agent Harbor can drive (Claude Code, Codex, OpenHands, mini-swe-agent and the rest) runs on Gauntlet tasks and gets Gauntlet's grading:
+Every task exports to [Harbor](https://github.com/harbor-framework/harbor)'s task layout, so any agent Harbor can drive (Claude Code, Codex, OpenHands, mini-swe-agent and the rest) runs on Gauntlet tasks and is graded by Gauntlet's own grader code:
 
 ```bash
 gauntlet export --format harbor --tasks datasets/gauntlet-live-2026-11/tasks.jsonl -o harbor/live
@@ -243,11 +243,13 @@ harbor run -p harbor/live -a <agent> -m <model>          # trajectories land und
 
 One task becomes `task.toml`, `instruction.md` (the same prompt a Gauntlet episode starts with), `environment/Dockerfile` (the env rebuilt at the base commit, plus the grader in `/opt/gauntlet`), `solution/solve.sh` (the merged fix, for Harbor's oracle) and `tests/`. The hidden tests live only in `tests/task.json`, which Harbor sends to the verifier and never to the agent.
 
-The part that matters is where grading happens. When the agent stops, a collect hook diffs its tree into `/logs/artifacts/gauntlet.patch`. Harbor then starts a **separate verifier container** from the same Dockerfile, a fresh env that never saw the agent, carries only that diff across, and runs `gauntlet harbor-grade` there. That's the same grader `gauntlet run` uses, with canaries, renamed targets and file hashes, plus Cheat Catcher's patch rules. It writes `reward.json` with Gauntlet's reward and `resolved`, and `gauntlet.json` with the full grade. The rubric judge is left out because the verifier is offline, and its weight is spread over the rest the way `compute_reward` already does.
+The part that matters is where grading happens. When the agent stops, a collect hook diffs its tree into `/logs/artifacts/gauntlet.patch`. Harbor then starts a **separate verifier container** from the same Dockerfile, a fresh env that never saw the agent, carries only that diff across, and runs `gauntlet harbor-grade` there. That's the grading code `gauntlet run` uses, so the canaries, renamed targets, file hashes and Cheat Catcher's patch rules all run. It writes `reward.json` with a reward and `resolved`, and `gauntlet.json` with the full grade.
 
 Both containers start with no network. An agent that calls a model API from inside its container needs that host let through: `--agent-host api.anthropic.com` turns the agent's network into an allowlist of exactly that. Never allow GitHub, or the merged fix is one fetch away. Harbor's local Docker provider can't change a container's network once it's running, so the policy is set at start time, and blocking needs the `nft_fib_inet` kernel module. GitHub's Linux runners have it. Docker Desktop on a Mac doesn't, so a local run there needs `public` swapped in by hand.
 
-The [Harbor workflow](.github/workflows/harbor.yml) checks all of this on every push, offline, on a real pytest task and a real vitest task: `oracle` has to come back resolved at reward 1, `nop` has to lose, and a forged conftest that rewrites every report to "passed" has to be caught by the verifier. The weekly [Live tasks](.github/workflows/live.yml) job publishes its new tasks as Harbor task folders too, ready for `harbor run`.
+The [Harbor workflow](.github/workflows/harbor.yml) runs real Harbor offline on one pytest task and one vitest task. `oracle` has to come back resolved at reward 1 and `nop` has to lose. A forged conftest that rewrites every report to "passed" has to come back "cheating". The weekly [Live tasks](.github/workflows/live.yml) job publishes its new tasks as Harbor task folders too, ready for `harbor run`.
+
+**What it doesn't do yet.** A Harbor reward from this export isn't a Gauntlet score yet. The verifier drops the rule rubric that `gauntlet run` always scores, so the reward comes out different. Cheat Catcher runs 9 of its 11 rules, since the two that read the agent's shell commands need a trajectory. While the suite runs, the agent's code shares the verifier's container and user with the grader, with `tests/task.json` (which holds the gold patch) on disk and `reward.json` writable. And the env is rebuilt from the install script, with nothing checking it against the task's env fingerprint. The verifier also installs the grader from this repo on GitHub, so no Harbor run has happened from this repo yet. [HARBOR_TODO.md](HARBOR_TODO.md) has the evidence for each gap.
 
 ## Limits
 
