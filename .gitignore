@@ -9,3 +9,4 @@ trajectories/
 runs/
 calibration/
 !datasets/**/*.jsonl
+!tests/tui/fixtures/**
