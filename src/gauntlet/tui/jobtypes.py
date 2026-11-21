@@ -20,6 +20,7 @@ Stream = Literal["out", "err"]
 ActionGroup = Literal["make", "check", "score"]
 
 FINISHED: frozenset[JobState] = frozenset({"succeeded", "failed", "cancelled"})
+SUCCESS = 0
 
 
 class JobNotFound(LookupError):
@@ -28,19 +29,29 @@ class JobNotFound(LookupError):
 
 @dataclass(frozen=True, slots=True)
 class Step:
-    """One command of a job: `gauntlet <argv...>`."""
+    """One command of a job: `gauntlet <argv...>`.
+
+    `ok_codes` are the exit codes that mean the step worked. Most commands only have 0, but
+    `cheatcatcher scan` exits 1 for suspicious and 2 for cheating, and that's a finished scan.
+    """
 
     title: str
     argv: tuple[str, ...]
+    ok_codes: tuple[int, ...] = (SUCCESS,)
 
 
 @dataclass(frozen=True, slots=True)
 class Output:
-    """A file or folder a job writes, so the Workbench can open the result afterwards."""
+    """A file or folder a job writes, so the Workbench can open the result afterwards.
+
+    `episode_id` is set when the output is one known episode in a run folder: "Try a patch"
+    names the episode it'll make, so the Workbench can open it straight after.
+    """
 
     kind: OutputKind
     path: str
     label: str
+    episode_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +88,18 @@ class JobEvent:
     record: JobRecord
     text: str = ""
     stream: Stream | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ActionInfo:
+    """One action the Workbench offers, for its list. `needs` is what it always needs; a job
+    can need more (a `claude:` policy adds `api_key`)."""
+
+    id: str
+    title: str
+    group: ActionGroup
+    description: str
+    needs: tuple[Need, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
