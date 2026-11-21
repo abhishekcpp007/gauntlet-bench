@@ -178,7 +178,6 @@ def test_cli_exports_the_harbor_layout(tmp_path, monkeypatch):
         ["git", "-C", str(repo_dir), "rev-parse", "HEAD~1"], capture_output=True, text=True, check=True
     ).stdout.strip()
     from gauntlet.envs.repo import Repo
-
     from gauntlet.harness import build, sandboxing
 
     monkeypatch.setattr(sandboxing, "cached_clone", lambda url, cache_dir=None: Repo(repo_dir, url, "o/calc"))
