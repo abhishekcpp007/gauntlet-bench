@@ -2,7 +2,6 @@
 
 from .detect import Stack, detect, install_script
 from .env import BuildFailed, EnvSpec, UnsupportedRepo, base_image_for, build_env, check_supported
-from .repo import GitError, Repo2EnvError
 from .patches import (
     PatchFailed,
     Task,
@@ -11,6 +10,7 @@ from .patches import (
     split_patch,
     strip_test_changes,
 )
+from .repo import GitError, Repo2EnvError
 from .testrun import TestReport, parse_jest_json, parse_junit, parse_report, run_tests, suite_command
 
 __all__ = [

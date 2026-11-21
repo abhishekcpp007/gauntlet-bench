@@ -42,6 +42,7 @@ import time
 from pathlib import Path
 
 from docker.errors import APIError
+
 from gauntlet.envs import BuildFailed, PatchFailed, Repo2EnvError, UnsupportedRepo
 from gauntlet.envs.repo import (
     GitError,

@@ -26,8 +26,8 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from gauntlet.envs import split_patch
-from gauntlet.envs.repo import is_test_path
 from gauntlet.envs.patches import PYTEST_CONFIG_FILES
+from gauntlet.envs.repo import is_test_path
 
 from .schema import GradeResult, HarnessTask, ItemScore, RubricItem, RubricScore
 

@@ -8,8 +8,9 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from gauntlet.sandbox import Sandbox, SandboxConfig
 from pydantic import BaseModel
+
+from gauntlet.sandbox import Sandbox, SandboxConfig
 
 from .detect import Stack, detect, install_script
 from .repo import Repo2EnvError, archive, clone, resolve

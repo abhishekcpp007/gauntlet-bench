@@ -12,8 +12,9 @@ import shlex
 import time
 from pathlib import PurePosixPath
 
-from gauntlet.sandbox import Sandbox
 from pydantic import BaseModel, Field
+
+from gauntlet.sandbox import Sandbox
 
 from .repo import Repo2EnvError, is_test_path
 

@@ -1,8 +1,8 @@
 import pytest
-from gauntlet.sandbox import Sandbox, SandboxConfig
 
 from gauntlet.harness.leakcheck import distinctive_added_lines, leakcheck
 from gauntlet.harness.sandboxing import boot
+from gauntlet.sandbox import Sandbox, SandboxConfig
 
 from .pipeline import pipeline
 

@@ -24,6 +24,7 @@ from pathlib import Path
 
 import docker
 from docker.errors import APIError, ImageNotFound
+
 from gauntlet.envs import (
     BuildFailed,
     PatchFailed,

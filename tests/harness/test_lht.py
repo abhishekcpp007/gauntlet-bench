@@ -9,8 +9,8 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from gauntlet.envs.repo import Repo, clone
 
+from gauntlet.envs.repo import Repo, clone
 from gauntlet.harness.grading import milestone_rates
 from gauntlet.harness.lht import (
     attribute,

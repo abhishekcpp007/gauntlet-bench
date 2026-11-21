@@ -10,6 +10,7 @@ from pathlib import Path
 
 import docker
 from docker.errors import ImageNotFound
+
 from gauntlet.envs.repo import Repo, archive, clone, default_cache, slug_for
 from gauntlet.sandbox import Sandbox, SandboxConfig
 
