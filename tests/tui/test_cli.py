@@ -22,16 +22,23 @@ class NoTextual:
 def test_tui_passes_its_options_to_the_viewer(monkeypatch):
     seen = {}
 
-    def fake_run(datasets, runs, *, ascii, theme):
-        seen.update(datasets=datasets, runs=runs, ascii=ascii, theme=theme)
+    def fake_run(datasets, runs, *, ascii, theme, workspace):
+        seen.update(datasets=datasets, runs=runs, ascii=ascii, theme=theme, workspace=workspace)
         return 0
 
     monkeypatch.setattr(tui_app, "run", fake_run)
     argv = ["tui", "--datasets", "d", "--run", "a", "--run", "b", "--ascii", "--theme", "gauntlet-light"]
-    assert cli.main(argv) == 0
-    assert seen == {"datasets": "d", "runs": ["a", "b"], "ascii": True, "theme": "gauntlet-light"}
+    assert cli.main([*argv, "--workspace", "w"]) == 0
+    expected = {
+        "datasets": "d",
+        "runs": ["a", "b"],
+        "ascii": True,
+        "theme": "gauntlet-light",
+        "workspace": "w",
+    }
+    assert seen == expected
     assert cli.main(["tui"]) == 0
-    assert seen == {"datasets": None, "runs": [], "ascii": False, "theme": None}
+    assert seen == {"datasets": None, "runs": [], "ascii": False, "theme": None, "workspace": "gauntlet-work"}
 
 
 def test_tui_without_textual_says_how_to_install_it(monkeypatch, capsys):
