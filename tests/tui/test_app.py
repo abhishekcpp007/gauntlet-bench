@@ -137,7 +137,7 @@ async def test_help_lists_the_real_bindings():
         await pilot.pause()
         assert isinstance(app.screen, HelpScreen)
         text = screen_text(app)
-        for words in ("Sort", "Copy id", "Open", "Help", "Quit", "Overview", "Reference", "Everywhere"):
+        for words in ("Sort", "Copy", "Open", "Help", "Quit", "Overview", "Reference", "Everywhere"):
             assert words in text
         groups = [name for name, _ in app.screen.groups]
         assert groups[-1] == "Everywhere"
@@ -341,7 +341,7 @@ async def test_slash_and_f_drive_a_screens_filter_bar():
         await pilot.press("escape")
         await pilot.pause()
         assert isinstance(app.screen, FilteredTasks)
-        assert "Next tab" not in screen_text(app).splitlines()[-1]
+        assert "] Tab" not in screen_text(app).splitlines()[-1]
 
 
 async def test_breadcrumbs_cut_long_ids_in_the_middle():

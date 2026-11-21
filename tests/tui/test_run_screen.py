@@ -98,7 +98,7 @@ async def test_summary_has_one_row_per_policy_in_order():
         oracle = next(line for line in text.splitlines() if "│ oracle " in line)
         assert "+1.00" in oracle
         footer = text.splitlines()[-1]
-        for words in ("Open", "Sort", "Copy id", "Filter", "Facets", "Next tab", "Back"):
+        for words in ("Open", "Sort", "Copy", "Filter", "Facets", "] Tab", "Back"):
             assert words in footer
 
 

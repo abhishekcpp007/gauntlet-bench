@@ -38,7 +38,7 @@ class GauntletScreen(Screen[None]):
         Binding("ctrl+c,super+c", "screen.copy_text", "Copy selection", show=False),
         Binding("slash", "filter", "Filter"),
         Binding("f", "facets", "Facets"),
-        Binding("right_square_bracket,l", "tab(1)", "Next tab"),
+        Binding("right_square_bracket,l", "tab(1)", "Tab"),
         Binding("left_square_bracket,h", "tab(-1)", "Prev tab", show=False),
     ]
 

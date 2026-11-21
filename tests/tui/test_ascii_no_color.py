@@ -118,3 +118,17 @@ def test_textual_widgets_get_plain_group_names():
     assert group_name(Tabs()) == "Tabs"
     assert group_name(Input()) == "Text box"
     assert group_name(VerticalScroll()) == "Scrolling"
+
+
+async def test_detail_footers_keep_quit_at_80_columns():
+    app = GauntletApp(sample_store())
+    async with app.run_test(size=(80, 24)) as pilot:
+        app.open_run(RUN_ID)
+        await settle(app, pilot)
+        assert screen_text(app).splitlines()[-1].rstrip().endswith("q Quit")
+        await pilot.press("escape")
+        app.open_episode(RUN_ID, TOMLI_CHEATER)
+        await settle(app, pilot)
+        app.screen.query_one(TabbedContent).active = "evidence"
+        await settle(app, pilot)
+        assert screen_text(app).splitlines()[-1].rstrip().endswith("q Quit")

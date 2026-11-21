@@ -143,7 +143,7 @@ class DataGrid(Themed, Generic[R]):
     BINDINGS = [
         Binding("s", "sort_next", "Sort"),
         Binding("S", "sort_flip", "Reverse sort", show=False),
-        Binding("c", "copy", "Copy id"),
+        Binding("c", "copy", "Copy"),
     ]
 
     class Opened(Message):

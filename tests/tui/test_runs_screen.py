@@ -54,7 +54,7 @@ async def test_footer_keys():
     async with app.run_test(size=WIDE) as pilot:
         await open_runs(app, pilot)
         footer = screen_text(app).splitlines()[-1]
-        for words in ("Open", "Sort", "Copy id", "Filter", "Help", "Quit"):
+        for words in ("Open", "Sort", "Copy", "Filter", "Help", "Quit"):
             assert words in footer
         assert "Facets" not in footer
 

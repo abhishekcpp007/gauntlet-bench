@@ -211,7 +211,7 @@ class Matrix(Themed):
     """
 
     HELP_GROUP = "Matrix"
-    BINDINGS = [Binding("c", "copy", "Copy episode id")]
+    BINDINGS = [Binding("c", "copy", "Copy")]
 
     class Opened(Message):
         """`enter` on a played cell. The screen opens the episode."""
