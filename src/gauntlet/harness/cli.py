@@ -6,6 +6,7 @@ gauntlet leakcheck --tasks tasks.jsonl
 gauntlet run      --tasks tasks.jsonl --policies oracle,noop,claude:claude-opus-5-5 --attempts 3 -o runs/
 gauntlet report   --results runs/results.jsonl --cutoff 2026-06-01
 gauntlet cheatcatcher scan --trajectory run.jsonl --patch fix.diff
+gauntlet tui      --datasets datasets --run runs/
 """
 
 from __future__ import annotations
@@ -425,6 +426,17 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     return 1 if bad else 0
 
 
+def cmd_tui(args: argparse.Namespace) -> int:
+    try:
+        from gauntlet.tui.app import run
+    except ModuleNotFoundError as e:
+        if e.name != "textual":
+            raise
+        print('the viewer needs Textual: pip install "gauntlet[tui]"', file=sys.stderr)
+        return 1
+    return run(args.datasets, args.run, ascii=args.ascii, theme=args.theme)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="gauntlet", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)  # fmt: skip
@@ -528,6 +540,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workers", type=int, default=2)
     p.add_argument("-o", "--output", default="calibration")
     p.set_defaults(fn=cmd_calibrate)
+
+    p = sub.add_parser("tui", help="browse tasks, runs and episodes in the terminal (read-only)")
+    p.add_argument("--datasets", help="folder of task sets, default ./datasets if it exists")
+    p.add_argument("--run", action="append", default=[], help="a run folder to load, repeatable")
+    p.add_argument("--ascii", action="store_true", help="draw with ASCII symbols and borders only")
+    p.add_argument("--theme", help="gauntlet-dark (default), gauntlet-light, or any Textual theme")
+    p.set_defaults(fn=cmd_tui)
 
     sub.add_parser("cheatcatcher", help="scan a trajectory or patch for cheating", add_help=False)
 
