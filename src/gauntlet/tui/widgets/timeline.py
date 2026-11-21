@@ -51,6 +51,7 @@ ROOMY_WIDTH = 90
 HEADER_ROWS = 1
 FIXED_GAPS = 3
 MARK_PREFIX = 2
+GUTTER_SIDES = 2
 
 FLAGGED = replace(VERDICTS["cheating"], word="flagged")
 TIMED_OUT = replace(WARNING, word="timed out")
@@ -435,7 +436,7 @@ class StepList(ScrollView, can_focus=True):
     def _detail_line(self, line: Line, look: Look) -> list[Segment]:
         base = self.rich_style
         muted = base + look.style("muted")
-        gutter = Segment(" " * (INDENT - 1) + ("|" if look.ascii else "│") + " ", muted)
+        gutter = Segment(" " * (INDENT - GUTTER_SIDES) + ("|" if look.ascii else "│") + " ", muted)
         if line.kind in ("more", "note"):
             text = f"{look.glyphs.ellipsis} {line.text}" if line.kind == "more" else line.text
             return [gutter, Segment(" " * LABEL_WIDTH), Segment(text, muted)]

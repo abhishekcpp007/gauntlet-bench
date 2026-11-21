@@ -76,7 +76,8 @@ async def test_normal_table_and_bar():
 
 async def test_ascii_bar():
     text = await shown(RewardBar(breakdown(), 0.9625, "clean", True), ascii=True)
-    assert "#" in text and "█" not in text
+    assert "#" in text and "x 0.60 = 0.60" in text
+    assert text.isascii()
 
 
 def test_partial_credit():

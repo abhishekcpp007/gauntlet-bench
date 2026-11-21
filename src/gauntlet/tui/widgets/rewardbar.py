@@ -36,6 +36,8 @@ EARNED = "█"
 UNEARNED = "░"
 ASCII_EARNED = "#"
 ASCII_UNEARNED = "."
+TIMES = "×"
+ASCII_TIMES = "x"
 
 
 @dataclass(frozen=True, slots=True)
@@ -286,7 +288,8 @@ class RewardBar(Themed):
                     look.muted(part.name), Text(f"{part.value:.{number}f}"), look.muted("weight not recorded")
                 )
             else:
-                sum_text = Text(f"× {part.weight:.{number}f} = ", style=look.style("muted"))
+                times = ASCII_TIMES if look.ascii else TIMES
+                sum_text = Text(f"{times} {part.weight:.{number}f} = ", style=look.style("muted"))
                 sum_text.append(
                     f"{part.contribution or 0.0:.{number}f}", style=look.style("plain", bold=True)
                 )
