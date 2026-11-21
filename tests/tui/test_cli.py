@@ -7,6 +7,9 @@ import pytest
 import gauntlet.tui.app as tui_app
 from gauntlet.harness import cli
 
+from .sample import SAMPLE_DATASETS
+
+USAGE = 2
 SRC = Path(__file__).resolve().parents[2] / "src"
 
 
@@ -99,3 +102,22 @@ def test_run_defaults_to_the_datasets_folder_here(tmp_path, monkeypatch):
     (tmp_path / "datasets").rmdir()
     assert tui_app.run() == 0
     assert seen["datasets"] is None
+
+
+def test_run_names_every_kind_of_policy_in_its_help(capsys):
+    with pytest.raises(SystemExit):
+        cli.main(["run", "--help"])
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "comma separated: oracle, noop, cheater[:trick], claude:<model id>, patch:<file>" in help_text
+
+
+def test_run_turns_a_bad_policy_into_one_error_line(tmp_path, capsys):
+    tasks = SAMPLE_DATASETS / "gauntlet-mini-live" / "tasks.jsonl"
+    missing = tmp_path / "missing.diff"
+    code = cli.main(
+        ["run", "--tasks", str(tasks), "--policies", f"oracle,patch:{missing}", "-o", str(tmp_path)]
+    )
+    assert code == USAGE
+    err = capsys.readouterr().err.strip().splitlines()
+    assert err == [f"error: there's no patch file at {missing}"]
+    assert not (tmp_path / "results.jsonl").exists()

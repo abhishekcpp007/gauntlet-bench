@@ -263,6 +263,7 @@ def _budget(args: argparse.Namespace):
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    from .policies import make_policy
     from .report import render_markdown, summarize
     from .runner import run
 
@@ -274,6 +275,12 @@ def cmd_run(args: argparse.Namespace) -> int:
     client = _claude_client()
     if needs_claude and client is None:
         print("error: claude policies need ANTHROPIC_API_KEY (or ANTHROPIC_AUTH_TOKEN)", file=sys.stderr)
+        return 2
+    try:
+        for spec in policies:
+            make_policy(spec, client=client)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
         return 2
 
     def show(r) -> None:
@@ -446,7 +453,8 @@ def main(argv: list[str] | None = None) -> int:
 
     def runner_args(p: argparse.ArgumentParser) -> None:
         p.add_argument("--policies", default="oracle,noop,cheater",
-                       help="comma separated: oracle, noop, cheater, claude:<model id>")  # fmt: skip
+                       help="comma separated: oracle, noop, cheater[:trick], claude:<model id>, "
+                            "patch:<file>")  # fmt: skip
         p.add_argument("--attempts", type=int, default=1, help="episodes per task per policy (for pass@k)")
         p.add_argument("--workers", type=int, default=2)
         p.add_argument("--max-steps", type=int, default=None, help="default: 60 for swe, 400 for lht")
