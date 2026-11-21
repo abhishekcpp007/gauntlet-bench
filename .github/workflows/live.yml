@@ -46,7 +46,6 @@ jobs:
             uv run gauntlet run --tasks out/tasks.jsonl --policies oracle,noop,cheater -o out/runs
             uv run gauntlet report --results out/runs/results.jsonl --cutoff "$SINCE" --html out/report.html \
               >> "$GITHUB_STEP_SUMMARY"
-            uv run gauntlet export --format swebench --tasks out/tasks.jsonl -o out/swebench.jsonl
           else
             echo "No new tasks since $SINCE." >> "$GITHUB_STEP_SUMMARY"
           fi
