@@ -53,8 +53,9 @@ from ..widgets.states import Empty, EmptyState
 from ..widgets.themed import Themed
 from .base import DataScreen
 
-KIND_ORDER: dict[PolicyKind, int] = {"oracle": 0, "noop": 1, "cheat": 2, "model": 3}
-CATEGORY_ORDER = {"swe": 0, "lht": 1}
+POLICY_KINDS: tuple[PolicyKind, ...] = ("oracle", "noop", "cheat", "model")
+KIND_ORDER = {kind: index for index, kind in enumerate(POLICY_KINDS)}
+CATEGORY_ORDER = {category: index for index, category in enumerate(("swe", "lht"))}
 PASS_DIGITS = 2
 SUMMARY_TAB = "summary"
 MATRIX_TAB = "matrix"

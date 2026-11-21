@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from gauntlet.tui.models import Matrix as MatrixData
 from gauntlet.tui.models import MatrixCell, MatrixTask
 from gauntlet.tui.widgets import CopyRequested
@@ -175,3 +177,13 @@ async def test_task_column_stays_put_while_policies_scroll():
             await pilot.press("l")
         assert app.matrix.table.scroll_x > 0
         assert "owner__repository-name-0" in screen_text(app)
+
+
+async def test_reads_without_colour(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("NO_COLOR", "1")
+    app = MatrixApp(sample())
+    async with app.run_test(size=(120, 24)) as pilot:
+        await pilot.pause()
+        text = screen_text(app)
+        assert "+1.00 ✓" in text and "-1.00 ●✗" in text and " 0.00 ▲" in text
+        assert "✓ resolved" in status_text(app)
