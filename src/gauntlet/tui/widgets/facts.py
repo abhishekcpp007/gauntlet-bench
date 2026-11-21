@@ -45,6 +45,7 @@ class Facts(Themed, can_focus=True):
     }
     """
 
+    HELP_GROUP = "Details"
     BINDINGS = [
         Binding("c", "copy", "Copy"),
         Binding("down,j", "move(1)", "Down", show=False),

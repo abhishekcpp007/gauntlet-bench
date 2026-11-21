@@ -74,15 +74,29 @@ class Sort:
     reverse: bool
 
 
+_QUIET = (
+    ("left", "cursor_left"),
+    ("right", "cursor_right"),
+    ("home", "scroll_home"),
+    ("end", "scroll_end"),
+    ("ctrl+pageup", "page_left"),
+    ("ctrl+pagedown", "page_right"),
+)
+
+
 class GridTable(DataTable[Text]):
     """The `DataTable` inside a `DataGrid`, with the viewer's keys."""
 
+    HELP_GROUP = "List"
     BINDINGS = [
         Binding("enter", "select_cursor", "Open"),
         Binding("j", "cursor_down", "Down", show=False),
         Binding("k", "cursor_up", "Up", show=False),
         Binding("g", "scroll_top", "Top", show=False),
         Binding("G", "scroll_bottom", "Bottom", show=False),
+        Binding("pageup", "page_up", "Page up", show=False),
+        Binding("pagedown", "page_down", "Page down", show=False),
+        *(Binding(key, action, "", show=False) for key, action in _QUIET),
     ]
 
 
@@ -124,6 +138,7 @@ class DataGrid(Themed, Generic[R]):
     }
     """
 
+    HELP_GROUP = "List"
     BINDINGS = [
         Binding("s", "sort_next", "Sort"),
         Binding("S", "sort_flip", "Reverse sort", show=False),

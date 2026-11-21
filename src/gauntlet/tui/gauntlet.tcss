@@ -1,0 +1,145 @@
+/* Screen and layout styling for the viewer. Widgets keep their own DEFAULT_CSS. */
+
+Screen {
+    background: $background;
+    layers: base overlay;
+}
+
+#body {
+    height: 1fr;
+    padding: 0 1;
+}
+
+/* Panes: a thin frame with a title. The focused pane takes the accent colour. */
+
+.pane {
+    border: round $border-blurred;
+    border-title-color: $foreground-muted;
+    border-title-style: bold;
+    border-subtitle-color: $foreground-muted;
+    background: $surface;
+    padding: 0 0;
+}
+
+.pane:focus-within {
+    border: round $border;
+    border-title-color: $text-primary;
+}
+
+App.-ascii .pane {
+    border: ascii $border-blurred;
+}
+
+App.-ascii .pane:focus-within {
+    border: ascii $border;
+}
+
+/* Overview */
+
+#headline {
+    height: 3;
+    padding: 1 1 0 1;
+}
+
+#headline Stat {
+    margin-right: 3;
+}
+
+.warning {
+    padding: 0 1;
+    color: $text-warning;
+}
+
+#datasets-pane {
+    height: auto;
+    max-height: 11;
+    margin-top: 1;
+}
+
+#datasets-pane DataGrid,
+#datasets-pane GridTable {
+    height: auto;
+    max-height: 9;
+}
+
+#runs-pane {
+    height: 1fr;
+    min-height: 5;
+}
+
+#score-pane {
+    height: auto;
+    padding: 0 1;
+}
+
+ScoreStrip {
+    height: auto;
+}
+
+/* Detail screens and tabs */
+
+TabbedContent {
+    height: 1fr;
+}
+
+TabPane {
+    padding: 0 1;
+}
+
+TabPane > VerticalScroll {
+    padding: 1 1 0 0;
+}
+
+.intro {
+    color: $foreground-muted;
+    margin-bottom: 1;
+}
+
+DataScreen Facts {
+    padding: 1 1;
+}
+
+App.-ascii Underline {
+    display: none;
+}
+
+App.-ascii Tab.-active {
+    text-style: bold underline;
+}
+
+App.-ascii SearchIcon {
+    display: none;
+}
+
+App.-ascii FooterKey.-command-palette {
+    border-left: none;
+}
+
+App.-ascii Toast {
+    border-left: ascii $primary;
+}
+
+/* Help */
+
+HelpScreen {
+    align: center middle;
+}
+
+#help-box {
+    width: 104;
+    max-width: 100%;
+    height: auto;
+    max-height: 90%;
+    padding: 1 2;
+    border: round $border;
+    border-title-color: $text-primary;
+}
+
+#help-columns {
+    height: auto;
+}
+
+#help-columns KeyTable {
+    width: 1fr;
+    margin-right: 2;
+}

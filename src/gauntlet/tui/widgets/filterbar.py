@@ -40,6 +40,7 @@ class FacetGroup:
 class FilterInput(Input):
     """The search box. `esc` clears it and hands focus back to the list, `enter` just hands it back."""
 
+    HELP_GROUP = "Filter"
     BINDINGS = [
         Binding("escape", "clear", "Clear filter"),
         Binding("enter", "done", "Done", show=False),

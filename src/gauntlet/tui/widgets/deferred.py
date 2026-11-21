@@ -2,7 +2,8 @@
 
     Deferred(lambda: source.trajectory(run_id, episode_id), self.build_timeline, what="trajectory")
 
-It shows `Loading` until `fetch` returns, then mounts what `build` yields. If `fetch` raises, it
+It shows `Loading` until `fetch` returns, then mounts what `build` yields and, if nothing on the
+screen has focus yet, focuses the first thing in it you can move around in. If `fetch` raises, it
 shows an `ErrorState` with one plain line instead, and the app carries on. With `lazy=True`
 (the default) nothing loads until the pane is first shown, so a tab that's never opened costs
 nothing.
@@ -16,6 +17,7 @@ from typing import Generic, TypeVar, cast
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widget import Widget
+from textual.widgets import Input
 from textual.worker import Worker, WorkerState
 
 from .states import ErrorState, Loading, describe_error
@@ -85,7 +87,7 @@ class Deferred(Vertical, Generic[T]):
         await self.mount_all(content)
         if self.screen.focused is None:
             for widget in self.query("*"):
-                if widget.focusable:
+                if widget.focusable and not isinstance(widget, Input):
                     widget.focus()
                     break
 

@@ -158,6 +158,7 @@ class DiffView(ScrollView, can_focus=True):
     }
     """
 
+    HELP_GROUP = "Patch"
     BINDINGS = [
         Binding("n", "next_file", "Next file"),
         Binding("p", "previous_file", "Prev file"),
