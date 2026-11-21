@@ -148,9 +148,35 @@ async def test_footer_bindings_are_declared():
     assert {"enter", "j", "k", "g", "G", "s", "S", "c"} <= keys
 
 
+LONG_ID = "shipped:gauntlet-live-2026-11"
+RUN_LIKE: tuple[Column[TaskRow], ...] = (
+    Column("id", "Run", lambda t: t.instance_id, kind="id", shrink=True),
+    Column("f2p", "Episodes", lambda t: t.f2p, kind="number"),
+    Column("cheat", "Best cheat", lambda t: t.n2p, kind="number", priority=2),
+    Column("repo", "A low priority column", lambda t: t.repo, priority=5),
+)
+
+
+class RunLikeApp(WidgetApp):
+    def __init__(self, rows) -> None:
+        self.grid: DataGrid[TaskRow] = DataGrid(RUN_LIKE, key=lambda t: t.instance_id)
+        self.grid.set_rows(rows)
+        super().__init__(self.grid)
+
+
+async def test_a_long_id_is_cut_before_an_important_column_drops():
+    app = RunLikeApp((make_task_row(instance_id=LONG_ID),))
+    async with app.run_test(size=(52, 8)) as pilot:
+        await pilot.pause()
+        assert app.grid.visible_columns == ("id", "f2p", "cheat")
+        cell = app.grid.table.get_row_at(0)[0].plain
+        assert cell != LONG_ID and cell.startswith("shipped:") and cell.endswith("2026-11")
+
+
 async def test_columns_use_the_room_a_wide_terminal_has():
     long_id = "tests/test_" + "x" * 150 + ".py::test_case"
-    app = GridApp(rows=(make_task_row(instance_id=long_id),))
-    async with app.run_test(size=(260, 8)) as pilot:
+    app = RunLikeApp((make_task_row(instance_id=long_id),))
+    async with app.run_test(size=(240, 8)) as pilot:
         await pilot.pause()
         assert app.grid.table.get_row_at(0)[0].plain == long_id
+        assert "repo" in app.grid.visible_columns

@@ -139,5 +139,6 @@ async def test_fits_80x24():
         text = screen_text(app)
         assert all(len(line) <= SMALL[0] for line in text.splitlines())
         assert INTRO in text
-        for words in ("Run", "Episodes", "Oracle", "Violations", GOLDEN, SHIPPED_LIVE):
+        for words in ("Run", "Episodes", "Oracle", "Best cheat", "Violations", GOLDEN, "shipped:"):
             assert words in text
+        assert "…" in text

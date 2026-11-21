@@ -41,7 +41,8 @@ CELL_PADDING = 1
 CELL_SIDES = 2
 MIN_SHRINK_WIDTH = 8
 SCROLLBAR_WIDTH = 1
-
+SHRINK_FLOOR = 20
+CUT_FOR_PRIORITY = 2
 NUMERIC_KINDS: frozenset[ColumnKind] = frozenset({"number", "reward"})
 DESCENDING_FIRST: frozenset[ColumnKind] = frozenset({"number", "reward", "date"})
 ESSENTIAL = 1
@@ -301,27 +302,45 @@ class DataGrid(Themed, Generic[R]):
         """Which columns fit in `available` cells and how wide each is.
 
         Essential columns always show. The rest go in by priority, each one only if it still
-        fits, so a wide low-priority column never pushes out a narrow one. Then the `shrink`
-        column gives up width if the essentials alone are too wide.
+        fits. For a column of priority `CUT_FOR_PRIORITY` or better, "fits" counts every `shrink`
+        column cut to `SHRINK_FLOOR`, so a long id gets cut in the middle before an important
+        column drops. Less important columns only go in if the ids keep their full width. Room
+        left over goes back to the `shrink` columns, and if the essentials alone don't fit,
+        `shrink` columns go down to `MIN_SHRINK_WIDTH`.
         """
         look = self.look
-        widths = {c.key: self._natural_width(c, look) + CELL_SIDES * CELL_PADDING for c in self.columns}
+        sides = CELL_SIDES * CELL_PADDING
+        full = {c.key: self._natural_width(c, look) + sides for c in self.columns}
+        floor = {
+            c.key: min(full[c.key], SHRINK_FLOOR + sides) if c.shrink else full[c.key] for c in self.columns
+        }
+        if not available:
+            return tuple((c, full[c.key] - sides) for c in self.columns)
         chosen = {c.key for c in self.columns if c.priority <= ESSENTIAL}
-        used = sum(widths[k] for k in chosen)
+        used = sum(floor[k] for k in chosen)
+        used_full = sum(full[k] for k in chosen)
         for column in sorted(self.columns, key=lambda c: c.priority):
             if column.key in chosen:
                 continue
-            if not available or used + widths[column.key] <= available:
+            cut_ids = column.priority <= CUT_FOR_PRIORITY
+            if (used if cut_ids else used_full) + floor[column.key] <= available:
                 chosen.add(column.key)
-                used += widths[column.key]
+                used += floor[column.key]
+                used_full += full[column.key]
         shown = [c for c in self.columns if c.key in chosen]
-        over = used - available if available else 0
+        widths = {c.key: floor[c.key] for c in shown}
+        spare = available - used
         for column in shown:
-            if over > 0 and column.shrink:
-                cut = min(over, widths[column.key] - MIN_SHRINK_WIDTH - CELL_SIDES * CELL_PADDING)
-                widths[column.key] -= max(cut, 0)
-                break
-        widths = {k: w - CELL_SIDES * CELL_PADDING for k, w in widths.items()}
+            if column.shrink:
+                if spare >= 0:
+                    grow = min(spare, full[column.key] - floor[column.key])
+                    widths[column.key] += grow
+                    spare -= grow
+                else:
+                    cut = min(-spare, widths[column.key] - MIN_SHRINK_WIDTH - sides)
+                    widths[column.key] -= max(cut, 0)
+                    spare += max(cut, 0)
+        widths = {k: w - sides for k, w in widths.items()}
         return tuple((c, widths[c.key]) for c in shown)
 
     def _label(self, column: Column[R], look: Look) -> Text:
