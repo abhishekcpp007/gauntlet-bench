@@ -35,6 +35,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gauntlet"]
+exclude = ["src/gauntlet/cheatcatcher/ruff.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -46,9 +47,13 @@ markers = [
 [tool.ruff]
 line-length = 110
 target-version = "py311"
+extend-exclude = ["tests/cheatcatcher/examples/*.diff"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["gauntlet"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/gauntlet/harness/report.py" = ["E501"]  # the inline HTML template
