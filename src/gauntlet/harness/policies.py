@@ -8,9 +8,11 @@ the bottom, and `cheater` must always be caught and penalized.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shlex
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -79,19 +81,16 @@ def _chunks(text: str, size: int) -> list[str]:
     return out
 
 
-class OraclePolicy(Policy):
-    name = "oracle"
+class _AppliesPatch(Policy):
+    """Writes a patch into the sandbox, `git apply`s it and submits. The oracle and `patch:` share it."""
 
-    def run(self, env: SWEEnv) -> None:
-        obs, _ = env.reset()
-        self._log("user", obs)
-        gold = env.task.gold_patch
-        if ORACLE_EOF in gold:  # never seen in practice, but don't let a patch end the heredoc
-            raise RuntimeError("gold patch contains the heredoc sentinel")
+    def _apply_and_submit(self, env: SWEEnv, patch: str, what: str) -> None:
+        if ORACLE_EOF in patch:  # never seen in practice, but don't let a patch end the heredoc
+            raise RuntimeError(f"{what} contains the heredoc sentinel")
         # One command per chunk: Linux caps a single argument at 128 KB (MAX_ARG_STRLEN) and the
         # whole command is one argument to `sh -c`. A release range's gold patch can be 270 KB,
         # and sent in one go the command never ran, so the oracle submitted nothing.
-        for i, chunk in enumerate(_chunks(gold if gold.endswith("\n") else gold + "\n", ORACLE_CHUNK)):
+        for i, chunk in enumerate(_chunks(patch if patch.endswith("\n") else patch + "\n", ORACLE_CHUNK)):
             op = ">" if i == 0 else ">>"
             cmd = f"cat {op} /tmp/oracle.diff <<'{ORACLE_EOF}'\n{chunk}{ORACLE_EOF}"
             _, done = self._step(env, {"type": "bash", "command": cmd})
@@ -100,6 +99,59 @@ class OraclePolicy(Policy):
         _, done = self._step(env, {"type": "bash", "command": "git apply /tmp/oracle.diff"})
         if not done:
             self._step(env, {"type": "submit"})
+
+
+class OraclePolicy(_AppliesPatch):
+    name = "oracle"
+
+    def run(self, env: SWEEnv) -> None:
+        obs, _ = env.reset()
+        self._log("user", obs)
+        self._apply_and_submit(env, env.task.gold_patch, "gold patch")
+
+
+PATCH_PREFIX = "patch:"
+
+
+class PatchPolicy(_AppliesPatch):
+    """`patch:<file>`: applies the patch in that file and submits, exactly the way the oracle
+    applies the real fix. It's how a person hands in their own answer to a task.
+
+    The file is read when the policy is made, which the runner does for every spec before any
+    sandbox starts, so a missing, unreadable or empty file fails at once. `name` is
+    `patch:<file name>`: two patches with the same file name share a row in a report, so give
+    them different names. The full path and the patch's sha256 go in `params()`, and the
+    runner's episode id comes from the spec as typed, so the episodes themselves stay apart.
+    A path with a comma can't be passed in `--policies`, which splits on commas.
+    """
+
+    def __init__(self, path: str) -> None:
+        super().__init__()
+        if not path:
+            raise ValueError("patch: needs a file, for example patch:fix.diff")
+        if "," in path:
+            raise ValueError(f"the patch path {path!r} has a comma, which --policies can't carry. Rename it")
+        try:
+            patch = Path(path).read_text(encoding="utf-8")
+        except FileNotFoundError:
+            raise ValueError(f"there's no patch file at {path}") from None
+        except (OSError, UnicodeDecodeError) as e:
+            raise ValueError(f"couldn't read the patch file {path}: {e}") from None
+        if not patch.strip():
+            raise ValueError(f"the patch file {path} is empty")
+        if ORACLE_EOF in patch:
+            raise ValueError(f"the patch file {path} contains {ORACLE_EOF}, which would end the heredoc")
+        self.path = path
+        self.patch = patch
+        self.name = f"{PATCH_PREFIX}{Path(path).name}"
+
+    def params(self) -> dict[str, Any]:
+        return {"patch": self.path, "sha256": hashlib.sha256(self.patch.encode()).hexdigest()}
+
+    def run(self, env: SWEEnv) -> None:
+        obs, _ = env.reset()
+        self._log("user", obs)
+        self._apply_and_submit(env, self.patch, "patch file")
 
 
 class NoopPolicy(Policy):
@@ -550,15 +602,19 @@ SCRIPTED = {"oracle": OraclePolicy, "noop": NoopPolicy, "cheater": CheaterPolicy
 
 
 def make_policy(spec: str, *, client: Any = None) -> Policy:
-    """`oracle`, `noop`, `cheater[:trick]` or `claude:<model>`.
+    """`oracle`, `noop`, `cheater[:trick]`, `claude:<model>` or `patch:<file>`.
 
     A bare `claude` takes the model from `GAUNTLET_CLAUDE_MODEL`.
     """
     if spec in SCRIPTED:
         return SCRIPTED[spec]()
+    if spec.startswith(PATCH_PREFIX):
+        return PatchPolicy(spec.removeprefix(PATCH_PREFIX))
     if spec.startswith("cheater:"):
         return ZooCheater(spec.partition(":")[2])
     if spec == "claude" or spec.startswith("claude:"):
         model = spec.partition(":")[2] or os.environ.get("GAUNTLET_CLAUDE_MODEL", "claude-opus-5-5")
         return ClaudePolicy(model, client=client)
-    raise ValueError(f"unknown policy {spec!r}. Use oracle, noop, cheater[:trick] or claude:<model>")
+    raise ValueError(
+        f"unknown policy {spec!r}. Use oracle, noop, cheater[:trick], claude:<model> or patch:<file>"
+    )
