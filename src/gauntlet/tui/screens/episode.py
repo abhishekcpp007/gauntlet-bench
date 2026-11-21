@@ -609,9 +609,10 @@ class EpisodeScreen(DataScreen[EpisodeDetail]):
     def focus_tab(self) -> None:
         """Focus the first thing you can move around in on the active tab. A tab still loading
         is left with nothing focused, so its content takes the focus when it arrives."""
-        tabs = self.query_one(TabbedContent)
-        if not tabs.active:
+        mounted = self.query(TabbedContent)
+        if not mounted or not mounted.first().active:
             return
+        tabs = mounted.first()
         found = [w for w in tabs.get_pane(tabs.active).query("*") if w.focusable and not isinstance(w, Input)]
         inner = [w for w in found if not any(o is not w and w in o.ancestors for o in found)]
         if inner:

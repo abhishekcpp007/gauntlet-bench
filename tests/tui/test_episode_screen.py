@@ -412,3 +412,15 @@ async def test_f_opens_the_test_facets_and_esc_goes_back():
         await pilot.press("escape")
         await settle(app, pilot)
         assert not isinstance(app.screen, EpisodeScreen)
+
+
+async def test_focusing_a_tab_after_the_tabs_are_gone_does_nothing():
+    app = GauntletApp(make_source())
+    async with app.run_test(size=WIDE) as pilot:
+        await open_episode(app, pilot, ORACLE)
+        screen = app.screen
+        assert isinstance(screen, EpisodeScreen)
+        await screen.query_one(TabbedContent).remove()
+        screen.focus_tab()
+        await pilot.pause()
+        assert not screen.query(TabbedContent)
