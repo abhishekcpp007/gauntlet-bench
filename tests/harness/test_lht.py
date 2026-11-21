@@ -393,7 +393,7 @@ def test_gold_resolves_and_half_a_release_earns_half(built):
 
 
 def test_shipped_lht_dataset_is_whole():
-    path = Path(__file__).parent.parent / "datasets" / "gauntlet-lht-2026-11" / "tasks.jsonl"
+    path = Path(__file__).parent.parent.parent / "datasets" / "gauntlet-lht-2026-11" / "tasks.jsonl"
     tasks = [HarnessTask.model_validate_json(line) for line in path.read_text().splitlines() if line.strip()]
     assert len(tasks) == 25
     for task in tasks:

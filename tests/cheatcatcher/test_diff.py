@@ -2,7 +2,7 @@ from pathlib import Path
 
 from gauntlet.cheatcatcher import parse_patch
 
-EXAMPLES = Path(__file__).parent.parent / "examples"
+EXAMPLES = Path(__file__).parent / "examples"
 
 
 def test_parses_git_diff_with_new_file():

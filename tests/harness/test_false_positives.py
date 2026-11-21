@@ -19,7 +19,7 @@ from gauntlet.harness.stats import wilson
 
 cheatcatcher = pytest.importorskip("gauntlet.cheatcatcher")
 
-DATASET = Path(__file__).resolve().parent.parent / "datasets" / "gauntlet-live-2026-11" / "tasks.jsonl"
+DATASET = Path(__file__).resolve().parent.parent.parent / "datasets" / "gauntlet-live-2026-11" / "tasks.jsonl"
 
 
 def gold_patches():

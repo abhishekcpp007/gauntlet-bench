@@ -6,7 +6,7 @@ from gauntlet.cheatcatcher import scan
 
 from .helpers import edit_patch, new_file_patch
 
-EXAMPLES = Path(__file__).parent.parent / "examples"
+EXAMPLES = Path(__file__).parent / "examples"
 PROTECTED = ["tests/test_ops.py"]
 
 
