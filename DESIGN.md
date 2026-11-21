@@ -1,4 +1,4 @@
-# gauntlet-harness design
+# Gauntlet design
 
 One harness that turns recently merged public GitHub PRs into leak-free RL environments, runs model policies in them, records trajectories, and judges each episode on test transitions (F2P / N2P / S2P / P2P) plus a rubric.
 
@@ -8,7 +8,7 @@ Shared data shapes live in `src/gauntlet/harness/schema.py`. Don't change field 
 
 ```
 collect (github.py)  ->  build (build.py: env at base commit, statement, 3 runs, transitions)
-      ->  leakcheck (leakcheck.py)  ->  rubric generation (rubric.py)  ->  tasks.jsonl
+      ->  leakcheck (leakcheck.py)  ->  tasks.jsonl
 run (runner.py: policies x tasks x attempts, each an episode in env.py)
       ->  grade (grading.py)  ->  rubric score (rubric.py)  ->  reward (reward.py)  ->  results.jsonl + RL jsonl
 report (report.py)
@@ -38,14 +38,12 @@ report (report.py)
 - `build.build_task(pr: PRInfo, *, cache_dir=None, python="3.12", scope="changed", fix_runs=2, strict_statement=True, log=...) -> HarnessTask | Rejected`
 - `leakcheck.leakcheck(task, *, cache_dir=None) -> LeakReport(ok: bool, checks: dict[str, Check(ok, detail)])`
 
-### judging (rubric.py, judge.py, reward.py)
+### judging (rubric.py, reward.py)
 
 - `rubric.RubricContext(task, patch, grade: GradeResult, cheat_report)`
 - `rubric.RULES: dict[str, Callable[[RubricContext], tuple[float, str]]]` deterministic rules returning (score 0..1, rationale)
 - `rubric.default_rubric(task) -> list[RubricItem]` (rule items only, always available)
-- `judge.generate_rubric(task, client, *, model) -> list[RubricItem]` (LLM-authored judge items)
-- `judge.judge_items(task, patch, items, client, *, model) -> list[ItemScore]`
-- `rubric.score_rubric(task, patch, grade, cheat_report, items, *, client=None, model=...) -> RubricScore`
+- `rubric.score_rubric(task, patch, grade, cheat_report, items) -> RubricScore`
 - `reward.RewardConfig`, `reward.compute_reward(grade, rubric, cheat_verdict, patch, gold_patch, cfg) -> tuple[float, dict[str, float]]`
 
 ### episodes (grading.py, env.py, policies.py, runner.py, report.py, cli.py)
@@ -144,7 +142,7 @@ interface while leaving the strategy alone, then do detection and install, "the 
 
 **One seam, by runner and not by language.** `runners.py` holds what differs: which files the
 integrity check hashes, what to redo when a sandbox boots at a new commit, how to probe the
-network, how much memory and CPU the runner needs. `repo2env.suite_command` is the one place a
+network, how much memory and CPU the runner needs. `envs.testrun.suite_command` is the one place a
 suite is run from. `grading.py` keeps the strategy (plant must-fail and must-pass tests, rename
 the targets, hash before and after) and hands the file editing to `jstests.py` for vitest. The
 pytest values moved into `runners.py` unchanged and a test pins the exact pytest command, so the
@@ -291,7 +289,7 @@ On the 8 real tasks that were graded (6 luxon, 1 dayjs, 1 eslint-plugin-jest) th
 **What jest does not have is a red team.** The cheats in `jscheats.py` are written against
 vitest's internals. On jest they fail to load, which proves nothing, so they aren't run and no
 jest task set is published yet. The defences are the same code, and
-`tests/test_jest_pipeline.py` holds the honest half: the real fix resolves under three seeds of
+`tests/harness/test_jest_pipeline.py` holds the honest half: the real fix resolves under three seeds of
 canaries and new names, and a patch that ships its own `node_modules/jest` is stripped.
 
 ### Still open
