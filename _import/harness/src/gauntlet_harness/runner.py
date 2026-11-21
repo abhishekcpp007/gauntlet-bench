@@ -1,0 +1,182 @@
+"""Run policies x tasks x attempts. Every episode writes three things:
+
+- a sandbox trajectory (`trajectories/<episode>.jsonl`, viewable with `timemachine view`)
+- an RL record (`rl/<episode>.json`: transcript, actions, reward and its breakdown)
+- one line in `results.jsonl`
+
+Runs are resumable: episodes already in results.jsonl are skipped.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import threading
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+from . import __version__
+from .budget import Budget, BudgetExhausted
+from .env import SWEEnv
+from .policies import make_policy
+from .reward import RewardConfig
+from .schema import EpisodeResult, HarnessTask, Provenance
+
+log = logging.getLogger(__name__)
+
+
+def episode_id(task: HarnessTask, policy: str, attempt: int) -> str:
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", policy)
+    return f"{task.instance_id}__{slug}__{attempt}"
+
+
+def load_results(path: Path) -> list[EpisodeResult]:
+    if not path.exists():
+        return []
+    return [EpisodeResult.model_validate_json(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+def run(
+    tasks: list[HarnessTask],
+    policies: list[str],
+    *,
+    out_dir: Path,
+    attempts: int = 1,
+    workers: int = 2,
+    max_steps: int | None = None,  # None: each task's category profile decides
+    cache_dir: Path | None = None,
+    reward_config: RewardConfig | None = None,
+    judge_client: Any = None,
+    judge_model: str = "claude-opus-5-5",
+    policy_client: Any = None,
+    budget: Budget | None = None,
+    on_result: Callable[[EpisodeResult], None] | None = None,
+    env_kwargs: dict[str, Any] | None = None,
+) -> list[EpisodeResult]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "trajectories").mkdir(exist_ok=True)
+    (out_dir / "rl").mkdir(exist_ok=True)
+    results_path = out_dir / "results.jsonl"
+    done = {r.episode_id for r in load_results(results_path)}
+    lock = threading.Lock()
+
+    # A bad spec is a typo, not an episode failure: say so now rather than after 53 tasks have
+    # each recorded the same error.
+    for spec in policies:
+        make_policy(spec, client=policy_client)
+
+    jobs = [
+        (task, spec, k)
+        for task in tasks
+        for spec in policies
+        for k in range(attempts)
+        if episode_id(task, spec, k) not in done
+    ]
+    log.info("%d episodes to run, %d already done", len(jobs), len(done))
+
+    def one(task: HarnessTask, spec: str, attempt: int) -> EpisodeResult | None:
+        if budget is not None:
+            try:
+                budget.check()
+            except BudgetExhausted:
+                return None  # the run stops here; what is already written stays written
+        eid = episode_id(task, spec, attempt)
+        policy = make_policy(spec, client=policy_client)
+        # Building the env can fail on its own, a pull that times out or a daemon that went
+        # away, and that is one episode's problem. Before this was inside the try, one such
+        # failure came back out of the worker and took the rest of the sweep with it.
+        env = None
+        try:
+            env = SWEEnv(
+                task,
+                max_steps=max_steps,
+                trajectory_path=out_dir / "trajectories" / f"{eid}.jsonl",
+                cache_dir=cache_dir,
+                reward_config=reward_config,
+                judge_client=judge_client,
+                judge_model=judge_model,
+                **(env_kwargs or {}),
+            )
+            policy.run(env)
+            result = env.result
+            if result is None:  # the policy stopped without submitting
+                env.step({"type": "submit"})
+                result = env.result
+            assert result is not None
+        except Exception as e:
+            log.exception("episode %s failed", eid)
+            result = EpisodeResult(
+                episode_id=eid,
+                instance_id=task.instance_id,
+                category=task.category,
+                policy=spec,
+                error=f"{type(e).__name__}: {e}",
+            )
+        finally:
+            if env is not None:
+                env.close()
+
+        actions = getattr(env, "actions", [])  # env is None when it could not be built
+        result.episode_id, result.policy, result.attempt = eid, policy.name, attempt
+        result.usage = dict(policy.usage)
+        result.provenance = Provenance(
+            harness_version=__version__,
+            policy_params=policy.params(),
+            image=task.image,
+            env_fingerprint=task.env_fingerprint,
+            grading_seed=os.environ.get("GAUNTLET_GRADING_SEED"),
+            ran_at=datetime.now(UTC).isoformat(timespec="seconds"),
+        )
+        if budget is not None:
+            budget.record(policy.name, result.usage)
+        result.merged_at = task.pr.merged_at
+        rl_path = out_dir / "rl" / f"{eid}.json"
+        rl_path.write_text(
+            json.dumps(
+                {
+                    "episode_id": eid,
+                    "instance_id": task.instance_id,
+                    "policy": policy.name,
+                    "messages": policy.messages,
+                    "actions": actions,
+                    "prompt": getattr(env, "prompt", ""),
+                    "steps": [
+                        {"action": a, "obs": o}
+                        for a, o in zip(actions, getattr(env, "observations", []), strict=False)
+                    ],
+                    "reward": result.reward,
+                    "reward_breakdown": result.reward_breakdown,
+                    "resolved": bool(result.grade and result.grade.resolved),
+                },
+                default=str,
+                indent=1,
+            )
+        )
+        result.rl_path = str(rl_path)
+        with lock:
+            with results_path.open("a") as f:
+                f.write(result.model_dump_json() + "\n")
+        if on_result:
+            on_result(result)
+        return result
+
+    out: list[EpisodeResult] = []
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        futures = [pool.submit(one, *job) for job in jobs]
+        for fut in as_completed(futures):
+            if (result := fut.result()) is not None:
+                out.append(result)
+    if budget is not None and budget.stopped_because:
+        log.warning(
+            "stopped early: %s. %d episodes ran, %s. Raise the ceiling and run the same "
+            "command again to carry on.",
+            budget.stopped_because,
+            budget.episodes,
+            f"${budget.usd:.2f} spent" if budget.usd else "no priced policies",
+        )
+    return out
