@@ -53,21 +53,27 @@ App.-ascii .pane:focus-within {
     color: $text-warning;
 }
 
-#datasets-pane {
+#datasets-pane,
+#runs-pane {
     height: auto;
-    max-height: 11;
+    max-height: 14;
+}
+
+#datasets-pane {
     margin-top: 1;
 }
 
 #datasets-pane DataGrid,
-#datasets-pane GridTable {
+#datasets-pane GridTable,
+#runs-pane DataGrid,
+#runs-pane GridTable {
     height: auto;
-    max-height: 9;
+    max-height: 12;
 }
 
-#runs-pane {
-    height: 1fr;
-    min-height: 5;
+#datasets-pane EmptyState,
+#runs-pane EmptyState {
+    height: auto;
 }
 
 #score-pane {

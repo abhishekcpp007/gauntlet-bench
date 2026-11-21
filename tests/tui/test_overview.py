@@ -85,3 +85,18 @@ async def test_overview_at_80x24_keeps_the_essentials():
         assert all(len(line) <= SMALL[0] for line in text.splitlines())
         for words in ("Dataset", "Tasks", "Leak checks", "Run", "Episodes", "Violations", "11 Reward"):
             assert words in text
+
+
+async def test_panes_fit_their_rows_with_a_cap():
+    app = GauntletApp(make_source())
+    async with app.run_test(size=(120, 50)) as pilot:
+        await open_overview(app, pilot)
+        runs = app.screen.query_one("#runs-pane")
+        rows = len(app.screen.query_one("#runs", DataGrid).rows)
+        assert runs.size.height == rows + 1
+        assert runs.outer_size.height == rows + 3
+    many = make_source(run_ids=tuple(f"run-{i}" for i in range(40)))
+    app = GauntletApp(many)
+    async with app.run_test(size=(120, 50)) as pilot:
+        await open_overview(app, pilot)
+        assert app.screen.query_one("#runs-pane").outer_size.height <= 14
