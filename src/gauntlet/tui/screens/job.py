@@ -49,6 +49,7 @@ from .confirm import ConfirmPrompt
 PROMPT = "$ "
 LOAD_GROUP = "job-load"
 SHORT_HEIGHT = 30
+KIND_WIDTH = 10
 CANCEL_DETAIL = "The harness gets an interrupt first so it can close its sandboxes, then a kill if it hangs."
 OUTPUT_KINDS = {
     "prs": "PRs",
@@ -158,7 +159,7 @@ class Outputs(OptionList):
 
 
 def output_line(output: Output) -> Text:
-    text = Text(f"{OUTPUT_KINDS.get(output.kind, output.kind):<10}", style="bold", end="")
+    text = Text(f"{OUTPUT_KINDS.get(output.kind, output.kind):<{KIND_WIDTH}}", style="bold", end="")
     text.append_text(fmt.safe_text(output.label, single_line=True))
     text.append("  ")
     text.append_text(fmt.safe_text(output.path, single_line=True, style="dim"))
