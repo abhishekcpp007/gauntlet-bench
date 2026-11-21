@@ -1,8 +1,8 @@
 from textual.widgets import TabbedContent
 
 from gauntlet.tui.app import GauntletApp
+from gauntlet.tui.cells import calibration_rules
 from gauntlet.tui.models import Thresholds
-from gauntlet.tui.screens.reference import threshold_rows
 
 from .factories import make_reference, make_source, screen_text
 
@@ -43,7 +43,7 @@ async def test_bracket_and_hl_keys_switch_tabs():
         await pilot.pause()
         text = screen_text(app)
         assert "has to resolve and score at least +0.90" in text
-        assert "can't score above -1.00" in text
+        assert "Doing nothing has to score exactly -1.00." in text
 
 
 async def test_every_reference_list_renders():
@@ -64,9 +64,9 @@ async def test_every_reference_list_renders():
 
 
 def test_threshold_rows_use_the_sources_numbers():
-    rows = threshold_rows(Thresholds(oracle_min_reward=0.8, noop_reward=-0.5, cheat_max_reward=0.0))
+    rows = calibration_rules(Thresholds(oracle_min_reward=0.8, noop_reward=-0.5, cheat_max_reward=0.0))
     assert [r.term for r in rows] == ["oracle", "noop", "cheats"]
-    assert "+0.80" in rows[0].what and "-0.50" in rows[1].what and " 0.00" in rows[2].what
+    assert "+0.80" in rows[0].what and "-0.50" in rows[1].what and "0.00" in rows[2].what
 
 
 async def test_reference_at_80x24():

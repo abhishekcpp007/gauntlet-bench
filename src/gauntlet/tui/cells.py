@@ -1,13 +1,15 @@
-"""Table cells that more than one screen shows for a run: its detail, its oracle and its
-violations. Each takes the record and the active `Look`, so it fits `Column(render=...)`."""
+"""Pieces more than one screen shows. The run cells (its detail, its oracle and its violations)
+take the record and the active `Look`, so they fit `Column(render=...)`. `calibration_rules`
+words the calibration thresholds the same way on the Run and Reference screens."""
 
 from __future__ import annotations
 
 from rich.text import Text
 
 from . import format as fmt
-from .models import RunSummary
+from .models import RunSummary, Thresholds
 from .theme import SUMMARY_ONLY, WARNING, Look, check_mark
+from .widgets.definitions import Definition
 
 
 def run_oracle(run: RunSummary, look: Look) -> Text:
@@ -31,3 +33,16 @@ def run_violations(run: RunSummary, look: Look) -> Text:
 def run_detail(run: RunSummary, look: Look) -> Text:
     """`full`, or `◌ summary` for shipped rows that left the full record out."""
     return look.mark(SUMMARY_ONLY) if run.detail == "summary" else Text("full", end="")
+
+
+def calibration_rules(thresholds: Thresholds) -> list[Definition]:
+    """What `gauntlet calibrate` holds a run to, one rule per kind of policy."""
+    oracle, noop, cheat = (
+        fmt.reward(value).strip()
+        for value in (thresholds.oracle_min_reward, thresholds.noop_reward, thresholds.cheat_max_reward)
+    )
+    return [
+        Definition("oracle", f"The real fix has to resolve and score at least {oracle}."),
+        Definition("noop", f"Doing nothing has to score exactly {noop}."),
+        Definition("cheats", f"No cheat may resolve or score above {cheat}."),
+    ]

@@ -12,8 +12,8 @@ from textual.containers import VerticalScroll
 from textual.widget import Widget
 from textual.widgets import Static, TabbedContent, TabPane
 
-from .. import format as fmt
-from ..models import Reference, ReferenceItem, Thresholds
+from ..cells import calibration_rules
+from ..models import Reference, ReferenceItem
 from ..widgets.definitions import Definition, Definitions
 from .base import DataScreen
 
@@ -37,14 +37,6 @@ def _definitions(items: Sequence[ReferenceItem], *, by_title: bool = False) -> D
     return Definitions(rows, numbered=by_title)
 
 
-def threshold_rows(thresholds: Thresholds) -> list[Definition]:
-    return [
-        Definition("oracle", f"has to resolve and score at least {fmt.reward(thresholds.oracle_min_reward)}"),
-        Definition("noop", f"can't score above {fmt.reward(thresholds.noop_reward)}"),
-        Definition("cheats", f"can't resolve or score above {fmt.reward(thresholds.cheat_max_reward)}"),
-    ]
-
-
 class ReferenceScreen(DataScreen[Reference]):
     crumb = "Reference"
     what = "the reference"
@@ -62,7 +54,7 @@ class ReferenceScreen(DataScreen[Reference]):
             ("leaks", f"Leak checks {len(data.leak_checks)}", _definitions(data.leak_checks)),
             ("rules", f"Cheat Catcher {len(data.rules)}", _definitions(data.rules)),
             ("policies", f"Policies {len(data.policies)}", _definitions(data.policies)),
-            ("thresholds", "Thresholds", Definitions(threshold_rows(data.thresholds))),
+            ("thresholds", "Thresholds", Definitions(calibration_rules(data.thresholds))),
         ]
         tabs = TabbedContent(id="reference-tabs")
         for pane_id, title, body in panes:

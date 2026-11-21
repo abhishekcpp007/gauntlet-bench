@@ -20,6 +20,7 @@ from textual.widget import Widget
 from textual.widgets import Input, Static, TabbedContent, TabPane
 
 from .. import format as fmt
+from ..cells import calibration_rules
 from ..models import (
     EpisodeFacets,
     EpisodeRow,
@@ -43,7 +44,7 @@ from ..theme import (
     tamper_mark,
 )
 from ..widgets.deferred import Deferred
-from ..widgets.definitions import Definition, Definitions
+from ..widgets.definitions import Definitions
 from ..widgets.facts import Fact, Facts
 from ..widgets.filterbar import FacetGroup, FilterBar
 from ..widgets.grid import Column, DataGrid
@@ -257,18 +258,6 @@ def run_facts(summary: RunSummary, look: Look) -> list[Fact]:
     ]
 
 
-def rule_rows(thresholds: Thresholds) -> list[Definition]:
-    oracle, noop, cheat = (
-        fmt.reward(value).strip()
-        for value in (thresholds.oracle_min_reward, thresholds.noop_reward, thresholds.cheat_max_reward)
-    )
-    return [
-        Definition("oracle", f"The real fix has to resolve and score at least {oracle}."),
-        Definition("noop", f"Doing nothing has to score exactly {noop}."),
-        Definition("cheats", f"No cheat may resolve or score above {cheat}."),
-    ]
-
-
 class CalibrationResult(Themed):
     """Whether the run passed the calibration check, each violation on its own line, and any
     rotted tasks that were left out."""
@@ -400,7 +389,7 @@ class RunScreen(DataScreen[RunData]):
         intro = Static(CALIBRATION_INTRO, markup=False, classes="intro")
         return VerticalScroll(
             intro,
-            Definitions(rule_rows(data.thresholds)),
+            Definitions(calibration_rules(data.thresholds)),
             CalibrationResult(data.detail),
             id="calibration-body",
         )
