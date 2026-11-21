@@ -3,16 +3,14 @@ from types import SimpleNamespace as NS
 import pytest
 
 from gauntlet.harness.rubric import RULES, RubricContext, combine, default_rubric, score_rubric, similarity
-from gauntlet.harness.schema import ItemScore, RubricItem
+from gauntlet.harness.schema import HarnessTask, ItemScore, RubricItem
 
 from .judging_helpers import (
     CONFTEST_HACK,
     OTHER_FILE,
     SRC_GOLD,
-    FakeClient,
     make_grade,
     make_task,
-    text_reply,
 )
 
 
@@ -114,23 +112,16 @@ def test_combine_formula():
     assert combine(items, []) == 0.0
 
 
-def test_judge_items_skipped_without_client_and_used_with_one():
-    task = make_task()
+def test_judge_items_in_an_old_task_file_are_skipped():
     items = [
         RubricItem(id="r", text="", category="essential", rule="targets_fixed"),
         RubricItem(id="j1", text="Handles argument order", category="essential", kind="judge"),
     ]
-    offline = score_rubric(task, SRC_GOLD, make_grade(), None, items)
-    assert offline.skipped == ["j1"] and offline.score == pytest.approx(1.0)
-
-    client = FakeClient(text_reply({"scores": [{"id": "j1", "met": False, "score": 0.0, "rationale": "no"}]}))
-    online = score_rubric(task, SRC_GOLD, make_grade(), None, items, client=client)
-    assert online.skipped == [] and online.judge_model == "claude-opus-5-5"
-    assert online.score == pytest.approx(0.5)
-
-    broken = FakeClient(text_reply("not json"))
-    degraded = score_rubric(task, SRC_GOLD, make_grade(), None, items, client=broken)
-    assert degraded.skipped == ["j1"] and degraded.score == pytest.approx(1.0)
+    task = HarnessTask.model_validate_json(make_task(rubric=items).model_dump_json())
+    result = score_rubric(task, SRC_GOLD, make_grade(), None, task.rubric)
+    assert result.skipped == ["j1"] and result.judge_model is None
+    rule_only = score_rubric(task, SRC_GOLD, make_grade(), None, [i for i in task.rubric if i.kind == "rule"])
+    assert result.score == rule_only.score == pytest.approx(1.0)
 
 
 def test_unknown_rule_is_an_error():

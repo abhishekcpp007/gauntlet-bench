@@ -1,4 +1,4 @@
-"""Rubrics: deterministic rule checks plus LLM-judged items, folded into one score.
+"""Rubrics: deterministic rule checks, folded into one score.
 
 The scoring follows Rubrics as Rewards (Gunjal et al., 2025, arXiv 2507.17746). Every item
 has a category with a weight (essential 1.0, important 0.7, optional 0.3, pitfall 0.9).
@@ -7,9 +7,9 @@ them, and the total is normalized by the positive weight:
 
     score = clip( (sum_i w_i * s_i  -  sum_j w_j * met_j) / sum_i w_i , 0, 1 )
 
-where i runs over scored non-pitfall items and j over scored pitfalls. Judge items that
-couldn't be scored (no client, API failure) are listed in `skipped` and left out entirely,
-so a missing judge never drags the score down.
+where i runs over scored non-pitfall items and j over scored pitfalls. Items of kind "judge"
+can still sit in an older task file, but nothing scores them any more. They're listed in
+`skipped` and left out entirely, so they never drag the score down.
 
 Every rule returns how well the patch does on the *good* behavior named by the rule, in
 [0, 1]. When a rule backs a pitfall item, it's inverted: `met` means the patch did the bad
@@ -30,8 +30,6 @@ from gauntlet.envs.repo import is_test_path
 from gauntlet.envs.patches import PYTEST_CONFIG_FILES
 
 from .schema import GradeResult, HarnessTask, ItemScore, RubricItem, RubricScore
-
-DEFAULT_JUDGE_MODEL = "claude-opus-5-5"
 
 
 @dataclass
@@ -308,9 +306,6 @@ def score_rubric(
     grade: GradeResult | None,
     cheat_report: Any,
     items: list[RubricItem],
-    *,
-    client: Any = None,
-    model: str = DEFAULT_JUDGE_MODEL,
 ) -> RubricScore:
     if not patch.strip():
         # doing nothing can't earn credit, even though "applies" and "no regressions" hold
@@ -329,23 +324,5 @@ def score_rubric(
 
     ctx = RubricContext(task=task, patch=patch, grade=grade, cheat_report=cheat_report)
     scores = [_score_rule(i, ctx) for i in items if i.kind == "rule"]
-    judge_items_list = [i for i in items if i.kind == "judge"]
-    skipped: list[str] = []
-    judge_model = None
-
-    if judge_items_list:
-        if client is None:
-            skipped = [i.id for i in judge_items_list]
-        else:
-            from .judge import JudgeError, judge_items
-
-            try:
-                judged = judge_items(task, patch, judge_items_list, client, model=model, grade=grade)
-                judge_model = model
-            except JudgeError:
-                judged = []
-            got = {s.id for s in judged}
-            scores.extend(judged)
-            skipped = [i.id for i in judge_items_list if i.id not in got]
-
-    return RubricScore(items=scores, score=combine(items, scores), judge_model=judge_model, skipped=skipped)
+    skipped = [i.id for i in items if i.kind == "judge"]
+    return RubricScore(items=scores, score=combine(items, scores), skipped=skipped)

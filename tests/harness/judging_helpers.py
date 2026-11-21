@@ -1,9 +1,6 @@
-"""Shared fixtures for the judging tests: a tiny task, patches, and a fake Anthropic client."""
+"""Shared fixtures for the judging tests: a tiny task and patches."""
 
 from __future__ import annotations
-
-import json
-from types import SimpleNamespace as NS
 
 from gauntlet.harness.schema import GradeResult, HarnessTask, PRInfo
 
@@ -56,29 +53,4 @@ def make_grade(*, resolved=True, f2p=True, p2p=True, applied=True, compile_error
         compile_errors=compile_errors or [],
         passed={"f2p": {"tests/test_ops.py::test_sub": f2p}, "p2p": {"tests/test_ops.py::test_add": p2p}},
         resolved=resolved,
-    )
-
-
-class FakeClient:
-    """Records every request; replies with canned responses shaped like the SDK's Message."""
-
-    def __init__(self, *replies):
-        self.replies = list(replies)
-        self.calls: list[dict] = []
-        self.beta = NS(messages=NS(create=self._create))
-
-    def _create(self, **kwargs):
-        self.calls.append(kwargs)
-        reply = self.replies.pop(0)
-        if isinstance(reply, Exception):
-            raise reply
-        return reply
-
-
-def text_reply(payload, stop="end_turn"):
-    text = payload if isinstance(payload, str) else json.dumps(payload)
-    return NS(
-        content=[NS(type="thinking", thinking=""), NS(type="text", text=text)],
-        stop_reason=stop,
-        usage=NS(input_tokens=10, output_tokens=5),
     )
