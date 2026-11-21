@@ -64,7 +64,8 @@ class Checklist(Themed):
         grid.add_column(ratio=1)
         for item in self.items:
             mark = self.passed if item.ok else self.failed
-            body = Text(item.label, style="bold", end="")
+            body = Text(end="")
+            body.append(item.label, style="bold")
             body.append(f"  {mark.word}", style=self.look.style(mark.tone))
             if item.detail:
                 body.append("\n")

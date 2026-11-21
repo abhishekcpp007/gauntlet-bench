@@ -1,5 +1,6 @@
 import threading
 
+from rich.style import Style
 from rich.text import Text
 
 from gauntlet.tui.models import NotFound
@@ -218,3 +219,17 @@ async def test_lazy_deferred_waits_until_shown():
         await app.workers.wait_for_complete()
         await pilot.pause()
         assert calls == [1, 1]
+
+
+async def test_checklist_bolds_only_the_label():
+    checklist = Checklist([CheckItem("network", False, "not blocked")])
+    app = WidgetApp(checklist)
+    async with app.run_test(size=(60, 4)) as pilot:
+        await pilot.pause()
+        body = checklist.render().columns[1]._cells[0]
+        assert body.style == ""
+        styles = [(body.plain[s.start : s.end], s.style) for s in body.spans]
+        bold = [
+            part for part, style in styles if (Style.parse(style) if isinstance(style, str) else style).bold
+        ]
+        assert bold == ["network"]
