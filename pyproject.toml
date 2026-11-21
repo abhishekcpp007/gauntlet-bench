@@ -19,6 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 claude = ["anthropic>=2.3"]
+tui = ["textual>=8.2"]
 
 [project.scripts]
 gauntlet = "gauntlet.harness.cli:main"
@@ -27,7 +28,7 @@ gauntlet = "gauntlet.harness.cli:main"
 Homepage = "https://github.com/abhishekcpp007/NEW_REPO"
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6", "anthropic>=2.3"]
+dev = ["pytest>=8", "ruff>=0.6", "anthropic>=2.3", "textual>=8.2", "pytest-asyncio>=1.5"]
 
 [build-system]
 requires = ["hatchling"]
@@ -39,6 +40,7 @@ exclude = ["src/gauntlet/cheatcatcher/ruff.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 markers = [
     "docker: needs a running Docker daemon, and most of these also pull images or packages over the network",
     "live: hits the real GitHub API (opt in with GAUNTLET_LIVE=1)",
