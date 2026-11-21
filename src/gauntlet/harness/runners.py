@@ -106,7 +106,7 @@ VITEST = Runner(
     memory="2g",
     pids_limit=512,
     # vitest runs each test file in its own process and starts as many as there are cores.
-    # On one core radashi's 960 tests took 100 seconds a run, and validating one PR is four
+    # On one core radashi's 960 tests took 100 seconds a run, and validating one PR is five
     # runs plus the leak check.
     cpus=4.0,
 )

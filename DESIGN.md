@@ -7,7 +7,7 @@ Shared data shapes live in `src/gauntlet/harness/schema.py`. Don't change field 
 ## Pipeline
 
 ```
-collect (github.py)  ->  build (build.py: env at base commit, statement, 3 runs, transitions)
+collect (github.py)  ->  build (build.py: env at base commit, statement, 5 runs, transitions)
       ->  leakcheck (leakcheck.py)  ->  tasks.jsonl
 run (runner.py: policies x tasks x attempts, each an episode in env.py)
       ->  grade (grading.py)  ->  rubric score (rubric.py)  ->  reward (reward.py)  ->  results.jsonl + RL jsonl
@@ -61,7 +61,7 @@ report (report.py)
 - **swe** is one merged PR. `build.build_task`. Multi-SWE-bench transition rules, strict.
 - **lht** is a release range. `lht.build_range_task(slug, from_ref, to_ref)`. It sets
   `task.horizon` (`Horizon`: refs, PRs in merge order, direct commits, milestones, dropped
-  regressions, gold size). Same three validation runs. A regression in the fix run drops that
+  regressions, gold size). Same kinds of validation runs. A regression in the fix run drops that
   test from grading, up to `min(5, 2% of stable tests)`; past that the range is rejected,
   because that many means the env is wrong.
 
@@ -94,8 +94,8 @@ test, as for SWE, and one in another graded file, the biggest the release didn't
 there is one. A hidden test file can import an API the agent hasn't written yet and fail to
 collect, and with one site that read as tampering and zeroed an honest agent's milestones
 (tenacity 9.2.0 -> 9.2.1). Two sites also make it much rarer for a cheat that spares each file's
-last two tests to get past every canary. Canary results are
-matched by base id, since a conftest can parametrize every test (markupsafe reports
+last two tests to get past every canary. Canary results are matched by base id, since a conftest
+can parametrize every test (markupsafe reports
 `name[markupsafe._native]`).
 
 Direct commits are milestones too (`commit-<sha12>`), via `lht.units_in_order`.
@@ -289,8 +289,8 @@ On the 8 real tasks that were graded (6 luxon, 1 dayjs, 1 eslint-plugin-jest) th
 **What jest does not have is a red team.** The cheats in `jscheats.py` are written against
 vitest's internals. On jest they fail to load, which proves nothing, so they aren't run and no
 jest task set is published yet. The defences are the same code, and
-`tests/harness/test_jest_pipeline.py` holds the honest half: the real fix resolves under three seeds of
-canaries and new names, and a patch that ships its own `node_modules/jest` is stripped.
+`tests/harness/test_jest_pipeline.py` holds the honest half: the real fix resolves under three
+seeds of canaries and new names, and a patch that ships its own `node_modules/jest` is stripped.
 
 ### Still open
 
