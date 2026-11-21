@@ -41,7 +41,7 @@ WorkbenchScreen #jobs-pane {
 }
 
 WorkbenchScreen.-narrow #actions-pane {
-    width: 26;
+    width: 32;
 }
 
 WorkbenchScreen.-narrow ActionAbout {

@@ -22,7 +22,9 @@ FIRST_LOOK = 3
 
 
 def policy_choices(source: DataSource) -> tuple[Choice, ...]:
-    return tuple(Choice(p.id, p.id, p.what) for p in source.reference().policies)
+    """The policies `gauntlet calibrate` runs, described from the reference."""
+    described = {p.id: p.what for p in source.reference().policies}
+    return tuple(Choice(p, p, described.get(p, "")) for p in actions.CALIBRATION_POLICIES)
 
 
 @register

@@ -123,7 +123,8 @@ async def test_calibrate_defaults_to_every_policy_and_checks_its_numbers(tmp_pat
         spec = view.review()
         assert spec is not None
         argv = spec.steps[0].argv
-        assert argv[argv.index("--policies") + 1].split(",") == [p.id for p in source.reference().policies]
+        assert argv[argv.index("--policies") + 1].split(",") == list(actions.CALIBRATION_POLICIES)
+        assert "api_key" not in spec.needs
         fill(view, workers="0", sample="-1")
         assert view.review() is None
         assert set(row_errors(view)) == {"workers", "sample"}

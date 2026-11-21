@@ -225,7 +225,10 @@ class WorkbenchScreen(GauntletScreen):
         self.machine: Machine | None = None
         self.workspace: Workspace | None = None
         self.forms: dict[str, FormView] = {}
-        self.current: str | None = self.actions[0].id if self.actions else None
+        self.current: str | None = next(
+            (info.id for info in self.actions if info.id in self.form_classes),
+            self.actions[0].id if self.actions else None,
+        )
         self._ticker: Timer | None = None
 
     def compose_body(self) -> ComposeResult:
@@ -294,11 +297,12 @@ class WorkbenchScreen(GauntletScreen):
         self.recheck()
 
     def highlight_first(self) -> None:
+        """Start on the first action that has a form, or the first action when none has one."""
         options = self.query_one(ActionList)
-        for index in range(options.option_count):
-            if not options.get_option_at_index(index).disabled:
-                options.highlighted = index
-                return
+        usable = [info.id for info in self.actions if info.id in self.form_classes]
+        first = usable[0] if usable else (self.actions[0].id if self.actions else None)
+        if first is not None:
+            options.highlighted = options.get_option_index(first)
 
     def info_for(self, action_id: str | None) -> ActionInfo | None:
         return next((info for info in self.actions if info.id == action_id), None)
