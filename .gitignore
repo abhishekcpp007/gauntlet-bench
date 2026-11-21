@@ -7,4 +7,5 @@ dist/
 trajectories/
 *.jsonl
 runs/
+calibration/
 !datasets/**/*.jsonl
