@@ -29,7 +29,7 @@ class Budget:
     max_tokens: int | None = None
     max_seconds: float | None = None
     max_usd: float | None = None
-    # dollars per million tokens, by policy name prefix, e.g. {"openai:gpt-5.1": (1.25, 10.0)}
+    # dollars per million tokens, by policy name prefix, e.g. {"claude:": (3.0, 15.0)}
     prices: dict[str, tuple[float, float]] = field(default_factory=dict)
 
     started: float = field(default_factory=time.monotonic)
@@ -41,7 +41,7 @@ class Budget:
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def price(self, policy: str) -> tuple[float, float] | None:
-        """Longest matching prefix wins, so `openai:` can price a whole family."""
+        """Longest matching prefix wins, so `claude:` can price a whole family."""
         matches = [k for k in self.prices if policy.startswith(k)]
         return self.prices[max(matches, key=len)] if matches else None
 
@@ -94,7 +94,7 @@ class Budget:
 
 
 def parse_prices(spec: str) -> dict[str, tuple[float, float]]:
-    """`openai:gpt-5.1=1.25/10,claude:=3/15` into a price table, in dollars per million tokens."""
+    """`claude:=3/15` into a price table, in dollars per million tokens."""
     prices: dict[str, tuple[float, float]] = {}
     for part in filter(None, (p.strip() for p in spec.split(","))):
         name, _, rates = part.rpartition("=")
