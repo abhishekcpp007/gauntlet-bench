@@ -27,7 +27,7 @@ def _say(msg: str) -> None:
 
 
 def _claude_client() -> Any:
-    """An Anthropic client when credentials are configured, otherwise None (rule-only judging)."""
+    """An Anthropic client when credentials are configured, otherwise None."""
     if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
         return None
     try:
@@ -103,7 +103,6 @@ def cmd_build(args: argparse.Namespace) -> int:
     out, rej = _out(args.output), _out(args.rejected)
     out.write_text("")
     rej.write_text("")
-    client = _claude_client() if args.rubric else None
     kept = 0
     for pr in prs:
         _say(f"{pr.repo}#{pr.number}: {pr.title[:70]}")
@@ -116,14 +115,14 @@ def cmd_build(args: argparse.Namespace) -> int:
             _say(f"  rejected at {result.stage}: {result.reason}")
             _append(rej, result)
             continue
-        if _keep(result, args, out, rej, client):
+        if _keep(result, args, out, rej):
             kept += 1
     print(f"built {kept} task(s) from {len(prs)} PRs into {out} (rejections in {rej})")
     return 0 if kept else 1
 
 
-def _keep(task: HarnessTask, args: argparse.Namespace, out: Path, rej: Path, client: Any) -> bool:
-    """Leak check, optional LLM rubric, then write the task. Shared by build and build-lht."""
+def _keep(task: HarnessTask, args: argparse.Namespace, out: Path, rej: Path) -> bool:
+    """Leak check, then write the task. Shared by build and build-lht."""
     from .leakcheck import leakcheck
 
     if not args.no_leakcheck:
@@ -137,11 +136,6 @@ def _keep(task: HarnessTask, args: argparse.Namespace, out: Path, rej: Path, cli
                 rej, Rejected(instance_id=task.instance_id, stage="leak", reason=", ".join(bad), detail=info)
             )
             return False
-    if client is not None:
-        from .judge import generate_rubric
-        from .rubric import default_rubric
-
-        task.rubric = default_rubric(task) + generate_rubric(task, client, model=args.judge_model)
     counts = ", ".join(f"{k}={len(getattr(task, k))}" for k in ("f2p", "n2p", "s2p", "p2p"))
     if task.horizon is not None:
         counts += f", milestones={len(task.horizon.milestones)}, prs={len(task.horizon.prs)}"
@@ -180,7 +174,6 @@ def cmd_build_lht(args: argparse.Namespace) -> int:
     if not args.append:
         out.write_text("")
         rej.write_text("")
-    client = _claude_client() if args.rubric else None
     kept = 0
     for a, b in pairs:
         _say(f"{args.repo} {a} -> {b}")
@@ -207,7 +200,7 @@ def cmd_build_lht(args: argparse.Namespace) -> int:
             _say(f"  rejected at {result.stage}: {result.reason}")
             _append(rej, result)
             continue
-        if _keep(result, args, out, rej, client):
+        if _keep(result, args, out, rej):
             kept += 1
     print(f"built {kept} LHT task(s) from {len(pairs)} release range(s) into {out} (rejections in {rej})")
     return 0 if kept else 1
@@ -296,8 +289,6 @@ def cmd_run(args: argparse.Namespace) -> int:
         workers=args.workers,
         max_steps=args.max_steps,
         budget=budget,
-        judge_client=client if args.judge else None,
-        judge_model=args.judge_model,
         policy_client=client,
         on_result=show,
     )
@@ -447,10 +438,6 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--attempts", type=int, default=1, help="episodes per task per policy (for pass@k)")
         p.add_argument("--workers", type=int, default=2)
         p.add_argument("--max-steps", type=int, default=None, help="default: 60 for swe, 400 for lht")
-        p.add_argument(
-            "--judge", action="store_true", help="LLM rubric judging (needs Anthropic credentials)"
-        )
-        p.add_argument("--judge-model", default="claude-opus-5-5")
         # ceilings, so a sweep against a metered API cannot run away
         p.add_argument("--max-episodes", type=int, help="stop after this many episodes")
         p.add_argument("--max-tokens", type=int, help="stop once the run has used this many tokens")
@@ -482,8 +469,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--fix-runs", type=int, default=2, help="repeat the fix run to catch flaky tests")
     p.add_argument("--no-leakcheck", action="store_true")
-    p.add_argument("--rubric", action="store_true", help="add LLM-written rubric items (needs credentials)")
-    p.add_argument("--judge-model", default="claude-opus-5-5")
     p.set_defaults(fn=cmd_build)
 
     p = sub.add_parser("ranges", help="list a repo's release ranges, the raw material for LHT tasks")
@@ -512,8 +497,6 @@ def main(argv: list[str] | None = None) -> int:
         help="full runs the whole suite so P2P guards the modules the release didn't touch",
     )
     p.add_argument("--no-leakcheck", action="store_true")
-    p.add_argument("--rubric", action="store_true", help="add LLM-written rubric items (needs credentials)")
-    p.add_argument("--judge-model", default="claude-opus-5-5")
     p.set_defaults(fn=cmd_build_lht)
 
     p = sub.add_parser("leakcheck", help="re-run the leak checks on built tasks")
