@@ -194,6 +194,8 @@ class TaskDetail:
     test_patch: str
     horizon: HorizonDetail | None
     episodes: tuple[EpisodeRow, ...]
+    gold_patch_truncated: bool = False
+    test_patch_truncated: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,6 +249,7 @@ class PolicyRow:
     errors: int
     pass_at_1: Interval | None = None
     tampered: int | None = None
+    category: Category | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -255,6 +258,7 @@ class RunDetail:
     policies: tuple[PolicyRow, ...]
     calibration_checked: bool
     violations: tuple[str, ...]
+    rotted: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -369,6 +373,8 @@ class EpisodeDetail:
     usage: tuple[tuple[str, str], ...]
     truncated: bool | None
     trajectory_steps: int | None
+    patch_truncated: bool = False
+    prompt: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -404,12 +410,14 @@ class TrajectoryStep:
     stdout: str
     stderr: str
     flagged: tuple[str, ...] = ()
+    content: str = ""
 
 
 @dataclass(frozen=True, slots=True)
 class Trajectory:
     header: TrajectoryHeader | None
     steps: tuple[TrajectoryStep, ...]
+    warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
