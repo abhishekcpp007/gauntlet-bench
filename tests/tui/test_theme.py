@@ -91,3 +91,11 @@ def test_palette_reads_theme_variables():
     assert palette.good == "#111111" and palette.muted == "#222222" and palette.accent == "#333333"
     look = theme.make_look({}, ascii=True)
     assert look.ascii and look.glyphs is theme.ASCII_GLYPHS
+
+
+def test_solid_color_flattens_see_through_and_keeps_ansi():
+    variables = {"background": "#000000", "muted": "#ffffff80", "ansi": "ansi_green", "bad": "nope"}
+    assert theme.solid_color(variables, "muted") == Color.parse("#808080").hex
+    assert theme.solid_color(variables, "ansi") == "color(2)"
+    assert theme.solid_color(variables, "bad") is None
+    assert theme.solid_color(variables, "missing") is None

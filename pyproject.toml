@@ -41,6 +41,7 @@ exclude = ["src/gauntlet/cheatcatcher/ruff.toml"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "docker: needs a running Docker daemon, and most of these also pull images or packages over the network",
     "live: hits the real GitHub API (opt in with GAUNTLET_LIVE=1)",

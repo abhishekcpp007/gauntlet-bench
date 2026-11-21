@@ -120,6 +120,7 @@ LEAK_FAILED = Mark("✗", "x", "failed", "bad")
 TAMPERED = Mark("✗", "x", "tampered", "bad")
 INTACT = Mark("✓", "+", "intact", "good")
 ERROR = Mark("!", "!", "error", "bad")
+WARNING = Mark("▲", "^", "warning", "warn")
 SUMMARY_ONLY = Mark("◌", "-", "summary", "muted")
 
 
@@ -191,17 +192,41 @@ class Palette:
 
     @classmethod
     def from_variables(cls, variables: dict[str, str]) -> Palette:
+        def pick(*names: str, fallback: str) -> str:
+            for name in names:
+                if (value := solid_color(variables, name)) is not None:
+                    return value
+            return fallback
+
         return cls(
-            good=variables.get("text-success", variables.get("success", "green")),
-            warn=variables.get("text-warning", variables.get("warning", "yellow")),
-            bad=variables.get("text-error", variables.get("error", "red")),
-            muted=variables.get("foreground-muted", "bright_black"),
-            plain=variables.get("foreground", "default"),
-            accent=variables.get("text-primary", variables.get("primary", "blue")),
+            good=pick("text-success", "success", fallback="green"),
+            warn=pick("text-warning", "warning", fallback="yellow"),
+            bad=pick("text-error", "error", fallback="red"),
+            muted=pick("foreground-muted", fallback="bright_black"),
+            plain=pick("foreground", fallback="default"),
+            accent=pick("text-primary", "primary", fallback="blue"),
         )
 
     def color(self, tone: Tone) -> str:
         return getattr(self, tone)
+
+
+def solid_color(variables: dict[str, str], name: str) -> str | None:
+    """Theme variable `name` as a colour Rich can draw: see-through colours are laid over the
+    background, ANSI colours keep their name. None when it's missing or isn't a colour."""
+    value = variables.get(name)
+    if value is None:
+        return None
+    try:
+        color = Color.parse(value)
+        background = Color.parse(variables.get("background", "black"))
+    except ColorParseError:
+        return None
+    if color.ansi is not None:
+        return color.rich_color.name
+    if color.a < 1:
+        color = background + color
+    return color.hex
 
 
 def _blendable(value: str) -> Color | None:
