@@ -1,0 +1,89 @@
+/* Episode screen layout. */
+
+#episode-head {
+    height: auto;
+    margin-top: 1;
+}
+
+#episode-score {
+    width: auto;
+    height: auto;
+    padding: 0 2 0 1;
+}
+
+#reward-digits {
+    width: auto;
+    text-style: bold;
+}
+
+#reward-text {
+    width: 6;
+    height: 3;
+    content-align: left middle;
+}
+
+EpisodeScreen #episode-head Facts {
+    width: 1fr;
+    padding: 0 1;
+}
+
+#episode-error {
+    padding: 0 1;
+    margin-top: 1;
+}
+
+.episode-note {
+    padding: 0 1;
+}
+
+#findings-pane {
+    height: auto;
+    max-height: 14;
+}
+
+#findings-pane DataGrid,
+#findings-pane GridTable {
+    height: auto;
+    max-height: 12;
+}
+
+#finding-evidence {
+    height: auto;
+    margin: 0 0 1 1;
+}
+
+#tests-body {
+    height: 1fr;
+}
+
+#test-summary-scroll {
+    height: auto;
+    max-height: 45%;
+    padding: 1 2 1 0;
+}
+
+#tests-pane {
+    height: 1fr;
+    min-height: 6;
+}
+
+#rubric-score {
+    margin-bottom: 1;
+}
+
+#rubric-skipped {
+    margin-top: 1;
+}
+
+#patch-pane,
+#trajectory-pane {
+    height: 1fr;
+}
+
+#provenance-facts {
+    padding: 0 0 1 0;
+}
+
+#prompt-text {
+    padding: 0 1;
+}
