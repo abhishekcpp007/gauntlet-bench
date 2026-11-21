@@ -113,7 +113,7 @@ VITEST = Runner(
 
 # jest runs in the same sandbox as vitest: same folders, same reinstall, same room. What differs is
 # the config file it reads, which has to be watched, and the command and report, which live with
-# the other suite commands in repo2env.
+# the other suite commands in gauntlet.envs.
 JEST = replace(
     VITEST,
     name="jest",

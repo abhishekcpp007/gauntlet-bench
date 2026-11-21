@@ -80,7 +80,7 @@ class GitHubClient:
         self._headers = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "gauntlet-harness",
+            "User-Agent": "gauntlet",
         }
         if token:
             self._headers["Authorization"] = f"Bearer {token}"

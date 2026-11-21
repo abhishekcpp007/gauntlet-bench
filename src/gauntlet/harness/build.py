@@ -208,7 +208,7 @@ def ensure_env(
     spec = build_env(url, ref=base, python=python, baseline_tests=False, cache_dir=cache_dir, log=log)
     image = client.images.get(spec.image)
     image.tag(ENV_REPO, fingerprint[:16])
-    client.images.remove(spec.image)  # only drops repo2env's tag, the image keeps ours
+    client.images.remove(spec.image)  # only drops the gauntlet-env tag, the image keeps ours
     return tag, fingerprint, False
 
 

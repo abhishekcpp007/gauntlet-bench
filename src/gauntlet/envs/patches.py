@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from .repo import Repo2EnvError, is_test_path
 
 # config files that decide what pytest collects. setup.cfg and pyproject.toml matter too, but
-# they hold real project settings, so they're left to gauntlet-cheatcatcher to flag instead.
+# they hold real project settings, so they're left to Cheat Catcher to flag instead.
 PYTEST_CONFIG_FILES = {"pytest.ini", ".pytest.ini", "tox.ini"}
 _DIFF_HEADER = re.compile(r'^diff --git "?a/(.+?)"? "?b/(.+?)"?$')
 

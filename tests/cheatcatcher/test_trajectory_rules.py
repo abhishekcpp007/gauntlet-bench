@@ -16,7 +16,7 @@ def rules(report, severity=None):
 
 def honest_run():
     t = make_traj()
-    # the same setup steps repo2env's open_task records
+    # the same setup steps a task sandbox records
     ex(t, "find /workspace/repo -mindepth 1 -delete")
     ex(t, "git init -q && git add -A && git -c user.name=gauntlet -c user.email=gauntlet@localhost commit -q -m base")
     ex(t, "ls -R", stdout="calc tests")

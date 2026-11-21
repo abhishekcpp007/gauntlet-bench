@@ -397,7 +397,7 @@ class Sandbox:
                 pass
         if snapshots:
             # only images still tagged as raw snapshots. Images built on top of one (like
-            # repo2env's env images) inherit the label but carry their own name, so they stay.
+            # the env images) inherit the label but carry their own name, so they stay.
             for img in client.images.list(name=SNAPSHOT_REPO):
                 for tag in img.tags:
                     if not tag.startswith(f"{SNAPSHOT_REPO}:"):

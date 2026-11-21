@@ -70,7 +70,7 @@ def test_pytest_ids_carry_the_file_which_is_what_the_rest_depends_on():
 
 @pytest.mark.parametrize("runner", ["jest", "vitest"])
 def test_the_javascript_runners_now_give_file_based_ids(runner):
-    """Fixed in repo2env by reading the file off the enclosing suite instead of the case.
+    """Fixed in gauntlet.envs by reading the file off the enclosing suite instead of the case.
 
     jest-junit records it on the testsuite and vitest uses the suite's name for it, so
     flattening the document with `iter("testcase")` lost it. This is step one of DESIGN.md's
