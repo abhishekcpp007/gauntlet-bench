@@ -24,7 +24,7 @@ jobs:
       - run: docker pull node:22-slim
       - run: uv run pytest -v
 
-  # a shipped task has to rebuild on the env it was validated in, whatever repo2env is pinned to
+  # a shipped task has to rebuild on the env it was validated in, so a change to envs/detect.py can't slip through
   envs:
     runs-on: ubuntu-latest
     steps:
