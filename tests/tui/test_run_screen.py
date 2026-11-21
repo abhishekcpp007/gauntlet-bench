@@ -15,7 +15,7 @@ from gauntlet.tui.screens.run import (
     pass_at_1,
 )
 from gauntlet.tui.theme import make_look
-from gauntlet.tui.widgets import DataGrid, FacetPicker, FilterBar
+from gauntlet.tui.widgets import DataGrid, FacetPicker, Facts, FilterBar
 from gauntlet.tui.widgets.matrix import Matrix
 
 from .factories import GOLDEN, SHIPPED_LIVE, failing_source, screen_text
@@ -94,7 +94,8 @@ async def test_summary_has_one_row_per_policy_in_order():
         assert "category" not in grid.visible_columns
         text = screen_text(app)
         assert "1.00 [0.00, 1.00]" in text
-        oracle = next(line for line in text.splitlines() if line.startswith("   oracle "))
+        assert "Policies · 4" in text and "pass@1 is the share resolved on the first try" in text
+        oracle = next(line for line in text.splitlines() if "│ oracle " in line)
         assert "+1.00" in oracle
         footer = text.splitlines()[-1]
         for words in ("Open", "Sort", "Copy id", "Filter", "Facets", "Next tab", "Back"):
@@ -146,7 +147,7 @@ async def test_summary_run_says_what_wasnt_shipped():
         text = screen_text(app)
         assert "◌ summary rows only: the full records weren't shipped" in text
         assert "shipped calibration" in text and "gauntlet-live-2026-11" in text
-        oracle = next(line for line in text.splitlines() if line.startswith("   oracle "))
+        oracle = next(line for line in text.splitlines() if "│ oracle " in line)
         assert "[" not in oracle
         await show(app, pilot, "calibration")
         assert UNCHECKED.split(". ")[0] in screen_text(app)
@@ -321,3 +322,19 @@ def test_policy_rows_without_an_interval_show_a_dash():
     row = runs_source().run(SHIPPED_LIVE).policies[0]
     assert isinstance(row, PolicyRow) and row.pass_at_1 is None
     assert pass_at_1(row, make_look({})).plain == "-"
+
+
+async def test_a_short_terminal_keeps_only_the_key_facts():
+    app = GauntletApp(runs_source())
+    async with app.run_test(size=WIDE) as pilot:
+        screen = await open_run(app, pilot)
+        facts = screen.query_one("#run-facts", Facts)
+        assert [f.label for f in facts.facts] == ["Run", "Kind", "Folder", "Size", "Ran", "Detail"]
+        await pilot.resize_terminal(*SMALL)
+        await settle(app, pilot)
+        assert screen.has_class("-short")
+        assert [f.label for f in facts.facts] == ["Run", "Size", "Detail"]
+        assert "oracle resolved" in screen_text(app) and "best cheat" in screen_text(app)
+        await pilot.resize_terminal(*WIDE)
+        await settle(app, pilot)
+        assert len(facts.facts) == len(screen.facts)

@@ -15,6 +15,7 @@ from rich.console import RenderableType
 from rich.text import Text
 from textual import work
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.events import Resize
 from textual.widget import Widget
 from textual.widgets import Input, Static, TabbedContent, TabPane
 
@@ -59,10 +60,7 @@ SUMMARY_TAB = "summary"
 MATRIX_TAB = "matrix"
 EPISODES_TAB = "episodes"
 CALIBRATION_TAB = "calibration"
-SUMMARY_INTRO = (
-    "One row per policy. pass@1 is the share of tasks resolved on the first try, "
-    "with its 95% interval. Enter lists its episodes."
-)
+SUMMARY_NOTE = "pass@1 is the share resolved on the first try, with its 95% interval"
 SUMMARY_ONLY_NOTE = "summary rows only: the full records weren't shipped"
 UNCHECKED = (
     "This run only has summary rows, so the calibration check can't be made here. "
@@ -73,6 +71,8 @@ ROTTED_NOTE = "A task whose pinned commit is gone upstream is left out of the ch
 NO_EPISODES = Empty("No episodes in this run.")
 NO_MATCH = Empty("No episodes match.", "Press / and then esc to clear the search, or f to change facets.")
 NO_MATRIX = Empty("Nothing to show.", "This run has no episodes, so there's no matrix.")
+SHORT_HEIGHT = 30
+SHORT_FACTS = frozenset({"Run", "Size", "Detail"})
 FACETS = (("policy", "Policy"), ("verdict", "Verdict"), ("task", "Task"))
 
 
@@ -312,6 +312,14 @@ class CalibrationResult(Themed):
         return text
 
 
+def pane(*children: Widget, title: str = "", subtitle: str = "") -> Vertical:
+    """A framed pane with a title, the frame every list on this screen sits in."""
+    frame = Vertical(*children, classes="pane")
+    frame.border_title = title
+    frame.border_subtitle = subtitle
+    return frame
+
+
 def facet_groups(facets: EpisodeFacets) -> list[FacetGroup]:
     values = {"policy": facets.policies, "verdict": facets.verdicts, "task": facets.tasks}
     return [FacetGroup(key, label, values[key]) for key, label in FACETS]
@@ -327,6 +335,7 @@ class RunScreen(DataScreen[RunData]):
         self.crumb = run_id
         self.total_episodes = 0
         self.pending: str | None = None
+        self.facts: list[Fact] = []
 
     def fetch(self) -> RunData:
         source = self.source
@@ -342,8 +351,9 @@ class RunScreen(DataScreen[RunData]):
         look = self.gauntlet.look
         summary = data.detail.summary
         self.total_episodes = len(data.episodes)
+        self.facts = run_facts(summary, look)
         yield Horizontal(
-            Facts(run_facts(summary, look), id="run-facts"),
+            Facts(self.shown_facts(), id="run-facts"),
             Vertical(*trust_numbers(summary, look), id="run-stats"),
             id="run-top",
         )
@@ -367,8 +377,8 @@ class RunScreen(DataScreen[RunData]):
             id="policies",
         )
         grid.set_rows(ordered_policies(detail.policies, detail.summary.policies))
-        yield Static(SUMMARY_INTRO, markup=False, classes="intro")
-        yield grid
+        dot = self.gauntlet.look.glyphs.dot
+        yield pane(grid, title=f"Policies {dot} {len(detail.policies)}", subtitle=SUMMARY_NOTE)
 
     def episodes_tab(self, data: RunData) -> Iterable[Widget]:
         groups = facet_groups(data.facets)
@@ -381,8 +391,7 @@ class RunScreen(DataScreen[RunData]):
             id="episode-grid",
         )
         grid.set_rows(data.episodes)
-        yield bar
-        yield grid
+        yield pane(bar, grid, title="Episodes", subtitle="enter opens one")
 
     def calibration_tab(self, data: RunData) -> Widget:
         if not data.detail.calibration_checked:
@@ -395,6 +404,19 @@ class RunScreen(DataScreen[RunData]):
             id="calibration-body",
         )
 
+    def shown_facts(self) -> list[Fact]:
+        """Every fact, or only the few that matter most when the terminal is short."""
+        if self.has_class("-short"):
+            return [fact for fact in self.facts if fact.label in SHORT_FACTS]
+        return self.facts
+
+    def on_resize(self, event: Resize) -> None:
+        super().on_resize(event)
+        self.set_class(event.size.height < SHORT_HEIGHT, "-short")
+        for facts in self.query("#run-facts"):
+            if isinstance(facts, Facts):
+                facts.set_facts(self.shown_facts())
+
     def fetch_matrix(self) -> MatrixData:
         return self.source.matrix(self.run_id)
 
@@ -402,8 +424,10 @@ class RunScreen(DataScreen[RunData]):
         if not data.tasks:
             yield EmptyState(NO_MATRIX)
             return
-        matrix = Matrix(data)
-        yield matrix
+        dot = self.gauntlet.look.glyphs.dot
+        tasks = fmt.plural(len(data.tasks), "task")
+        title = f"Rewards {dot} {tasks} by {fmt.plural(len(data.policies), 'policy', 'policies')}"
+        yield pane(Matrix(data), title=title, subtitle="enter opens the episode")
         self.call_after_refresh(self.focus_pane, self.query_one(f"#{MATRIX_TAB}", TabPane))
 
     def on_filter_bar_changed(self, event: FilterBar.Changed) -> None:

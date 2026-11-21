@@ -15,10 +15,23 @@ RunScreen #run-stats {
     padding: 0 0 0 4;
 }
 
+RunScreen TabPane > .pane {
+    height: 1fr;
+}
+
+RunScreen.-short #run-stats {
+    layout: horizontal;
+    width: 47;
+}
+
+RunScreen.-short #run-stats Stat {
+    margin-right: 3;
+}
+
 RunScreen #run-tabs {
     margin-top: 1;
 }
 
-RunScreen TabPane > DataGrid {
-    height: 1fr;
+RunScreen.-short #run-tabs {
+    margin-top: 0;
 }
