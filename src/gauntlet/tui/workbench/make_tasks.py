@@ -30,11 +30,7 @@ LIVE_PRS = 186
 LIVE_TASKS = 53
 """The shipped Live set's funnel, from datasets/gauntlet-live-2026-11/stats.json (a test checks it)."""
 
-BASE_RUNS = 1
-RUNS_PER_FIX_RUN = 2
-SUITE_RUNS = BASE_RUNS + RUNS_PER_FIX_RUN * actions.FIX_RUNS
-"""How often `gauntlet build` runs a PR's tests at the default fix runs: once at the base, then
-the new tests alone and the new tests with the fix, each as many times as the fix runs."""
+SUITE_RUNS = actions.SUITE_RUNS
 
 SCOPES = (
     Choice("full", "full: the whole test suite", "catches a break anywhere in the repo"),

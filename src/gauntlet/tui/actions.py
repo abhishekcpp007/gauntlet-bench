@@ -57,6 +57,11 @@ ATTEMPTS = 1
 WORKERS = 2
 SAMPLE_ALL = 0
 CATEGORIES = ("swe", "lht")
+BASE_RUNS = 1
+RUNS_PER_FIX_RUN = 2
+SUITE_RUNS = BASE_RUNS + RUNS_PER_FIX_RUN * FIX_RUNS
+"""How often `gauntlet build` runs a PR's tests at the default fix runs: once at the base, then
+the new tests alone and the new tests with the fix, each as many times as the fix runs."""
 TRY_PATCH_ATTEMPT = 0
 TRY_PATCH_WORKERS = 1
 
@@ -149,7 +154,7 @@ ACTIONS: tuple[ActionInfo, ...] = (
         "From fresh PRs",
         "make",
         "Collects recently merged PRs and builds a leak-checked task from each. Docker and network, "
-        "a few minutes a PR.",
+        f"a few minutes a PR. Each PR's tests run {SUITE_RUNS} times, and most PRs are rejected.",
         SANDBOX,
     ),
     ActionInfo(

@@ -434,3 +434,10 @@ def test_reading_the_parser_runs_no_command_and_puts_argparse_back(monkeypatch):
     parsed = actions.harness_parse("run", "--tasks", "x", "--attempts", "3")
     assert parsed.attempts == 3 and parsed.tasks == "x"
     assert cli.argparse is real_argparse
+
+
+def test_make_tasks_says_how_often_the_tests_run_and_that_most_prs_are_rejected():
+    info = next(i for i in actions.ACTIONS if i.id == "make_tasks")
+    assert actions.SUITE_RUNS == actions.BASE_RUNS + actions.RUNS_PER_FIX_RUN * actions.FIX_RUNS
+    assert f"tests run {actions.SUITE_RUNS} times" in info.description
+    assert "most PRs are rejected" in info.description
