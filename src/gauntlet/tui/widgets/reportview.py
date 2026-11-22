@@ -251,6 +251,8 @@ def report_lines(lines: Sequence[LogLine]) -> tuple[str, ...]:
 class ReportScreen(GauntletScreen):
     """The leaderboard a report job printed, as tables. `esc` goes back to the job."""
 
+    crumb = "Leaderboard"
+
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("g", "scroll_home", "Top", show=False),
         Binding("G", "scroll_end", "Bottom", show=False),
@@ -266,11 +268,11 @@ class ReportScreen(GauntletScreen):
     def __init__(self, job_id: str, title: str) -> None:
         super().__init__()
         self.job_id = job_id
-        self.crumb = title
+        self.title_text = title
 
     def compose_body(self) -> ComposeResult:
         body = VerticalScroll(ReportView(), id="report-body", classes="pane")
-        body.border_title = self.crumb
+        body.border_title = self.title_text
         body.border_subtitle = (
             f"job {self.job_id} {self.gauntlet.look.glyphs.dot} tab, then arrows, scroll a wide table"
         )

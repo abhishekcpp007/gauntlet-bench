@@ -31,7 +31,7 @@ class RunPolicies(ActionForm):
         MultiChoiceField(
             name="policies",
             label="Scripted policies",
-            hint="The oracle, the no-op and the plain cheater by default, like gauntlet run.",
+            hint="Starts on gauntlet run's own default. Each one plays every task.",
             options=policy_choices,
             default=RUN_DEFAULT,
             required=False,
@@ -39,7 +39,7 @@ class RunPolicies(ActionForm):
         TextField(
             name="extra",
             label="More policies",
-            hint="Optional, with spaces between. claude:<model> plays a model, patch:<file> grades a diff.",
+            hint="Optional. claude:<model> plays a model and patch:<file> grades a diff.",
             placeholder="claude:claude-opus-5-5",
             required=False,
             several=True,

@@ -30,7 +30,7 @@ async def test_it_is_found_and_says_what_the_checks_look_for(tmp_path: Path):
     async with app.run_test(size=WIDE) as pilot:
         await pilot.pause()
         text = screen_text(app)
-        assert f"all {actions.LEAK_CHECK_COUNT} checks" in text and "no network" in text
+        assert f"all {actions.LEAK_CHECK_COUNT} checks" in text and "anopennetwork" in flat(text)
 
 
 async def test_it_builds_the_engines_command(tmp_path: Path):
