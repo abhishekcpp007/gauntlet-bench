@@ -52,7 +52,7 @@ class Calibrate(ActionForm):
         MultiChoiceField(
             name="policies",
             label="Policies",
-            hint="Every policy by default: the oracle, the no-op and each cheat.",
+            hint="Every policy by default, the oracle and the no-op included.",
             options=policy_choices,
         ),
         IntegerField(

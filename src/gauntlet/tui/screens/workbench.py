@@ -46,7 +46,7 @@ LOW_DISK_GB = 20
 LOW_DISK_BYTES = LOW_DISK_GB * GIGABYTE
 MIN_PATH_WIDTH = 16
 CHECKING = "Checking the machine first."
-NO_JOBS = Empty("No jobs yet.", "Pick an action, fill in its form and press ctrl+r to review it.")
+NO_JOBS = Empty("No jobs yet.", "Pick an action and fill in its form. ctrl+r reviews it before it starts.")
 NO_FORM_YET = "This action doesn't have a form in the Workbench yet."
 NO_FORM_HINT = "Run it from the command line for now: gauntlet --help lists every command."
 

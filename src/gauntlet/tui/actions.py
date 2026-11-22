@@ -192,8 +192,8 @@ ACTIONS: tuple[ActionInfo, ...] = (
         "run_policies",
         "Run policies",
         "score",
-        "Grades the oracle, noop, cheats, a Claude model or your patch on a task set. Docker, and a "
-        "key for Claude.",
+        "Grades scripted policies or a Claude model on a task set. Your own patch works too. Docker, "
+        "and a key for Claude.",
         SANDBOX,
     ),
     ActionInfo(

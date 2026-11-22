@@ -11,7 +11,7 @@ from .base import ActionForm, FieldError, TaskSetField, Values, register
 
 CHECKS_HINT = (
     f"Each task gets all {actions.LEAK_CHECK_COUNT} checks. They look for the fix and the hidden tests "
-    "anywhere an agent could read them, grader files, extra git history and an open network."
+    "anywhere an agent could read them."
 )
 
 

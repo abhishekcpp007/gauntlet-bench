@@ -72,7 +72,7 @@ class MakeLhtTasks(ActionForm):
         SwitchField(
             name=FIELDS.prereleases,
             label="Prereleases",
-            hint="Count rc, alpha and beta tags as releases too.",
+            hint="Count pre-release tags like 2.0rc1 or 2.0b1 as releases too.",
         ),
         MultiChoiceField(
             name=FIELDS.ranges,
