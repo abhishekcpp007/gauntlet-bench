@@ -247,3 +247,23 @@ def test_a_short_workspace_path_is_shown_whole():
     look = make_look({})
     line = machine_line(fake_machine(workspace="/tmp/work"), look, width=200).plain
     assert line.endswith("workspace /tmp/work")
+
+
+async def test_a_finished_jobs_toast_opens_it_on_the_workbench(monkeypatch: pytest.MonkeyPatch):
+    runner = FakeJobRunner()
+    app = workbench_app(runner)
+    toasts: list[str] = []
+    async with app.run_test(size=WIDE) as pilot:
+        await settle(app, pilot)
+        monkeypatch.setattr(app, "notify", lambda message, **_kw: toasts.append(message))
+        record = runner.submit(make_spec(title="Odd [red]title[/red]"))
+        runner.run_until_idle()
+        await settle(app, pilot)
+        assert toasts == [f"Odd \\[red]title\\[/red] succeeded. [@click=app.open_job('{record.id}')]Open it[/]"]
+        await app.run_action(f"app.open_job('{record.id}')")
+        await settle(app, pilot)
+        assert isinstance(app.screen, JobScreen) and app.screen.job_id == record.id
+        assert app.current_mode == "workbench"
+        await app.run_action(f"app.open_job('{record.id}')")
+        await settle(app, pilot)
+        assert len(app.screen_stack) == 2
