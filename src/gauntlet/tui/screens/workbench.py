@@ -10,6 +10,7 @@ there starts the job and lands on its screen.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import ClassVar
 
 from rich.console import RenderableType
@@ -50,6 +51,15 @@ NO_FORM_YET = "This action doesn't have a form in the Workbench yet."
 NO_FORM_HINT = "Run it from the command line for now: gauntlet --help lists every command."
 
 
+def shown_path(path: str, here: Path | None = None) -> str:
+    """`path` as a folder under the current one, when it is one, so the line says `gauntlet-work`
+    rather than the whole path from the root. Any other path is shown whole."""
+    try:
+        return str(Path(path).relative_to(here or Path.cwd()))
+    except ValueError:
+        return path
+
+
 def machine_line(
     machine: Machine | None, look: Look, error: str | None = None, *, width: int | None = None
 ) -> Text:
@@ -79,7 +89,7 @@ def machine_line(
     key = KEY_SET if machine.anthropic_key_set else NO_KEY
     text.append_text(look.mark(key, word=False))
     text.append(f" {key.word}", style=look.style("muted") if not machine.anthropic_key_set else "")
-    path = fmt.visible(fmt.one_line(machine.workspace))
+    path = fmt.visible(fmt.one_line(shown_path(machine.workspace)))
     label = look.muted("workspace ")
     if width is None:
         text.append_text(dot)

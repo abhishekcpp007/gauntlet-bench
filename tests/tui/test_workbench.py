@@ -17,6 +17,7 @@ from gauntlet.tui.workbench.scan import ScanPatch
 
 from .factories import GOLDEN, LHT, LIVE, SHIPPED_LIVE, FakeSource, make_run_summary, make_source, screen_text
 from .fakejobs import FakeJobRunner, fake_machine, fill, make_spec
+from .wait import settle
 
 WIDE = (140, 40)
 SMALL = (80, 24)
@@ -31,12 +32,6 @@ def source_with_files(tmp_path: Path) -> FakeSource:
     shown = tuple(replace(d, tasks_file=str(tasks)) for d in source.datasets())
     source.datasets = lambda: shown  # type: ignore[method-assign]  # a test double
     return source
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause(0.1)
 
 
 async def open_workbench(app: GauntletApp, pilot) -> WorkbenchScreen:
@@ -399,3 +394,10 @@ async def test_the_list_marks_a_blocked_action():
         prompt = screen.query_one(ActionList).get_option("calibrate").prompt
         assert "needs Docker" in str(prompt) and "network" not in str(prompt)
         assert screen.forms["scan_patch"].blocked is None
+
+
+def test_the_workspace_shows_relative_to_the_current_folder(tmp_path):
+    from gauntlet.tui.screens.workbench import shown_path
+
+    assert shown_path(str(tmp_path / "gauntlet-work"), tmp_path) == "gauntlet-work"
+    assert shown_path("/elsewhere/work", tmp_path) == "/elsewhere/work"
