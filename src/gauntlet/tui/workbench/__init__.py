@@ -34,9 +34,11 @@ Declare fields
     `options=` a function of the `DataSource` that runs in a thread; a multi-choice picks every
     option unless `default` says which), `SwitchField` (yes or no), `PathField` (`kind="file"` or
     `"folder"`, `must_exist=False` for an output that may be new; `ctrl+o` browses),
-    `TaskSetField` (gives the set's `tasks.jsonl`), `TaskField` (`task_set=` the name of the
-    task set field it lists from) and `RunField` (`results=True` gives its results file). Take
-    defaults and limits from the constants in `gauntlet.tui.actions`, never your own copies.
+    `TaskSetField` (gives the set's `tasks.jsonl`), `TaskSetsField` (any number of sets, read
+    with `values.paths`), `TaskField` (`task_set=` the name of the task set field it lists from)
+    and `RunField` (`results=True` gives its results file). Give fields that belong together the
+    same `group`, like "Limits", and they sit under one heading. Take defaults and limits from
+    the constants in `gauntlet.tui.actions`, never your own copies.
 
 Validate
     A field checks itself when the user leaves it and again on review: an empty required field,
@@ -49,12 +51,21 @@ Build a spec
     `JobSpec`. Never write argument lists in a form. Read values with `values.text`, `items`,
     `integer`, `number`, `flag` and `path`; each gives None (or `()`) for an empty optional
     field. A task set or run field gives its id with `text` and its file with `path`.
-    `values.workspace` is the `Workspace` the builders take. Override `after(job, app)` when
-    "open what it made" means more than opening the first output (Try a patch opens its episode
-    with `app.open_episode`); return False when there's nothing to open.
+    `values.workspace` is the `Workspace` the builders take.
+
+Hooks, all optional
+    `extras(view)` adds widgets of the form's own to its view, each after a named field or above
+    them all: a `FormNote` with something the description doesn't say, or a button like Make
+    from a release range's List ranges. `outcome(record)` returns a widget for the Job screen's
+    Result pane once the job has finished: `OutcomeView` for a scan or a check, `BuildResult` for
+    a build, `ReportOutcome` for a report. It reads what it needs in a thread. `openable(record)`
+    leaves out outputs not worth opening, like an empty task set, and `opens(record)` says whether
+    `o` does anything. `after(job, app)` is what `o` opens; the default opens the first openable
+    output, and a run output that names an episode opens that episode.
 
 Test it
-    Use `tests/tui/fakejobs.py`. Mount the form alone with `form_app(MyForm(), workspace=...)`,
+    Use `tests/tui/fakejobs.py` and `tests/tui/wait.py` (`settle` and `wait_until`: wait for a
+    condition, never for a fixed time). Mount the form alone with `form_app(MyForm(), workspace=...)`,
     set fields with `fill(view, name=value, ...)`, call `view.review()` and assert on the
     `JobSpec` it returns, or on `row_errors(view)` and the banner when it refuses. Then open it
     in the Workbench with `GauntletApp(make_source(), jobs=FakeJobRunner())` and check the
