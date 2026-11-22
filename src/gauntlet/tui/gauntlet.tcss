@@ -180,13 +180,17 @@ ConfirmPrompt {
     width: 96;
     max-width: 100%;
     height: auto;
-    max-height: 90%;
+    max-height: 100%;
     padding: 1 2;
     border: round $border;
     border-title-color: $text-primary;
     border-title-style: bold;
     border-subtitle-color: $foreground-muted;
     background: $surface;
+}
+
+.confirm-plan {
+    height: auto;
 }
 
 .prompt-box {

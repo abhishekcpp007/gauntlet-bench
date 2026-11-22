@@ -12,7 +12,8 @@ from rich.table import Table
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.events import Resize
 from textual.screen import ModalScreen
 from textual.widgets import Button
 
@@ -24,6 +25,10 @@ from ..widgets.themed import Themed
 from ..workbench.base import check_needs
 
 LABEL_GAP = 2
+CONFIRM_CHROME_ROWS = 8
+"""Rows around the plan: the frame, its padding, the buttons and their margin, and a row each
+above and below the box."""
+MIN_PLAN_ROWS = 3
 PROMPT = "$ "
 
 
@@ -103,13 +108,22 @@ class ConfirmJob(ModalScreen[bool]):
         with Vertical(id="confirm-box", classes="confirm-box") as box:
             box.border_title = f"Start {self.spec.title}?"
             box.border_subtitle = "enter starts it · esc goes back"
-            yield JobPlan(self.spec, self.machine, waits=self.waits)
+            with VerticalScroll(classes="confirm-plan", can_focus=False):
+                yield JobPlan(self.spec, self.machine, waits=self.waits)
             with Horizontal(classes="confirm-actions"):
                 yield Button("Start", variant="primary", id="start", compact=True)
                 yield Button("Back", id="back", compact=True)
 
     def on_mount(self) -> None:
         self.query_one("#start", Button).focus()
+        self.fit(self.app.size.height)
+
+    def on_resize(self, event: Resize) -> None:
+        self.fit(event.size.height)
+
+    def fit(self, height: int) -> None:
+        """Let the plan scroll, so a long plan never pushes Start off the screen."""
+        self.query_one(".confirm-plan").styles.max_height = max(height - CONFIRM_CHROME_ROWS, MIN_PLAN_ROWS)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         event.stop()
