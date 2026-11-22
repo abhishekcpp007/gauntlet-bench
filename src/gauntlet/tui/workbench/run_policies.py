@@ -20,6 +20,7 @@ from .base import (
 from .calibrate import policy_choices
 
 RUN_DEFAULT = ("oracle", "noop", "cheater")
+LIMITS = "Limits"
 CATEGORY_NAMES = {"swe": "swe, single-PR tasks", "lht": "lht, long release-range tasks"}
 
 
@@ -77,36 +78,41 @@ class RunPolicies(ActionForm):
         ),
         IntegerField(
             name="max_episodes",
-            label="Limit episodes",
-            hint="Limits, all optional: the run stops at the first one it hits. Episodes first.",
+            label="Episodes",
+            hint="Optional. Episodes the whole run may play. The run stops at the first limit it hits.",
+            group=LIMITS,
             minimum=actions.AT_LEAST_ONE,
             required=False,
         ),
         IntegerField(
             name="max_tokens",
-            label="Limit tokens",
-            hint="Model tokens the whole run may use.",
+            label="Tokens",
+            hint="Optional. Model tokens the whole run may use.",
+            group=LIMITS,
             minimum=actions.AT_LEAST_ONE,
             required=False,
         ),
         NumberField(
             name="max_seconds",
-            label="Limit seconds",
-            hint="How long the whole run may take.",
+            label="Seconds",
+            hint="Optional. How long the whole run may take.",
+            group=LIMITS,
             required=False,
         ),
         NumberField(
             name="max_usd",
-            label="Limit dollars",
-            hint="What the run may cost. It needs prices below.",
+            label="Dollars",
+            hint="Optional. What the run may cost. It needs prices below.",
+            group=LIMITS,
             required=False,
         ),
         TextField(
             name="prices",
             label="Prices",
-            hint="Dollars per million tokens in and out, by policy prefix.",
+            hint="Optional. Dollars per million tokens in and out, by policy prefix.",
             placeholder="claude:=3/15",
             required=False,
+            group=LIMITS,
         ),
     )
 

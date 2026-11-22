@@ -3,7 +3,7 @@ from pathlib import Path
 from gauntlet.tui import actions
 from gauntlet.tui.app import GauntletApp
 from gauntlet.tui.screens.confirm import ConfirmJob
-from gauntlet.tui.widgets.form import FormView
+from gauntlet.tui.widgets.form import FormView, GroupHeading
 from gauntlet.tui.widgets.jobstatus import command_line
 from gauntlet.tui.workbench import forms
 from gauntlet.tui.workbench.run_policies import RUN_DEFAULT, RunPolicies
@@ -224,3 +224,13 @@ async def test_fits_at_80_by_24(tmp_path: Path):
         assert screen.forms["run_policies"].has_class("-stacked")
         text = screen_text(app)
         assert "Task set" in text and "Quit" in text.splitlines()[-1]
+
+
+async def test_the_spend_caps_sit_in_a_limits_group(tmp_path: Path):
+    app = form_app(RunPolicies(), workspace=tmp_path)
+    async with app.run_test(size=(140, 60)) as pilot:
+        await pilot.pause()
+        view = app.query_one(FormView)
+        grouped = [row.field.name for row in view.rows if row.field.group == "Limits"]
+        assert grouped == ["max_episodes", "max_tokens", "max_seconds", "max_usd", "prices"]
+        assert [h.name_text for h in view.query(GroupHeading)] == ["Limits"]

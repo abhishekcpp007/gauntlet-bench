@@ -57,13 +57,15 @@ class Field:
     """One input on a form. `name` is the key in `Values`; `label` and `hint` are what the user reads.
 
     An empty value is None, which is fine unless `required` is set. Subclasses override `parse`
-    for a value that isn't empty.
+    for a value that isn't empty. Fields in a row with the same `group` are drawn under a heading
+    of that name.
     """
 
     name: str
     label: str
     hint: str = ""
     required: bool = True
+    group: str = ""
 
     def check(self, raw: object) -> object:
         """`raw` (what the widget holds) as a value, or `FieldError` saying what's wrong."""

@@ -5,7 +5,7 @@ from textual.widgets import Input, SelectionList, Static, Switch
 
 from gauntlet.tui.actions import ActionError
 from gauntlet.tui.jobtypes import JobSpec, Step
-from gauntlet.tui.widgets.form import FieldRow, FormBanner, FormView, ReviewButton
+from gauntlet.tui.widgets.form import FieldRow, FormBanner, FormView, GroupHeading, ReviewButton
 from gauntlet.tui.widgets.pickers import PathPicker, Picker
 from gauntlet.tui.workbench.base import (
     ActionForm,
@@ -334,3 +334,24 @@ def test_extras_after_a_field_the_form_doesnt_have_is_a_mistake():
     view = FormView(Wrong(), source=make_source)
     with pytest.raises(ValueError, match="missing"):
         list(view.compose())
+
+
+class Grouped(ActionForm):
+    action_id = "grouped"
+    fields = (
+        TextField(name="plain", label="Plain"),
+        IntegerField(name="cap_a", label="Cap A", required=False, group="Limits"),
+        IntegerField(name="cap_b", label="Cap B", required=False, group="Limits"),
+    )
+
+
+async def test_grouped_fields_sit_under_one_heading():
+    app = form_app(Grouped())
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.pause()
+        view = app.query_one(FormView)
+        headings = list(view.query(GroupHeading))
+        assert [h.name_text for h in headings] == ["Limits"]
+        order = list(view.children)
+        assert order.index(view.row("plain")) < order.index(headings[0]) < order.index(view.row("cap_a"))
+        assert "Limits" in screen_text(app)

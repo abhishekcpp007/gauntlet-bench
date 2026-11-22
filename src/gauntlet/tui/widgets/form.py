@@ -87,6 +87,24 @@ class FieldNote(Themed):
         return look.muted(self.hint)
 
 
+class GroupHeading(Themed):
+    """The dim heading over a group of fields, like "Limits"."""
+
+    DEFAULT_CSS = """
+    GroupHeading {
+        height: auto;
+        margin: 0 0 1 0;
+    }
+    """
+
+    def __init__(self, name: str) -> None:
+        super().__init__()
+        self.name_text = name
+
+    def render(self) -> RenderableType:
+        return Text(self.name_text, style=self.look.style("muted", bold=True), end="")
+
+
 class FormBanner(Themed):
     """One line over the fields: why the job can't start, or why `build` refused."""
 
@@ -410,7 +428,11 @@ class FormView(VerticalScroll):
         for widget, after in self.form.extras(self):
             extras.setdefault(after, []).append(widget)
         yield from extras.pop(None, [])
+        group = ""
         for row in self.rows:
+            if row.field.group and row.field.group != group:
+                yield GroupHeading(row.field.group)
+            group = row.field.group
             yield row
             yield from extras.pop(row.field.name, [])
         if extras:
