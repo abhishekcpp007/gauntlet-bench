@@ -14,7 +14,7 @@ from rich.table import Table
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, ScrollableContainer, VerticalScroll
+from textual.containers import Horizontal, ScrollableContainer, Vertical, VerticalScroll
 from textual.dom import DOMNode
 from textual.screen import ModalScreen, Screen
 from textual.widgets import Input, Tabs
@@ -32,6 +32,9 @@ TEXTUAL_GROUPS: tuple[tuple[type[DOMNode], str], ...] = (
     (ScrollableContainer, "Scrolling"),
 )
 KEY_GAP = 2
+HELP_WIDTH = 104
+HELP_FRAME = 6
+COLUMN_WIDTH = 30
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,8 +130,25 @@ class KeyTable(Themed):
         return grid
 
 
+def per_row(width: int, groups: int) -> int:
+    """How many groups fit side by side in a help box on a terminal `width` wide."""
+    room = min(width, HELP_WIDTH) - HELP_FRAME
+    return max(1, min(groups, room // COLUMN_WIDTH))
+
+
 class HelpScreen(ModalScreen[None]):
-    """Keys for the screen underneath, one column per group. `esc`, `?` or `q` closes it."""
+    """Keys for the screen underneath, a column per group, in as many rows as the width needs.
+    `esc`, `?` or `q` closes it."""
+
+    DEFAULT_CSS = """
+    HelpScreen .help-row {
+        height: auto;
+        margin-bottom: 1;
+    }
+    #help-columns {
+        layout: vertical;
+    }
+    """
 
     BINDINGS = [
         Binding("escape,question_mark,q", "dismiss", "Close", show=False),
@@ -142,6 +162,9 @@ class HelpScreen(ModalScreen[None]):
         with VerticalScroll(id="help-box", classes="pane") as box:
             box.border_title = "Keys"
             box.border_subtitle = "esc closes"
-            with Horizontal(id="help-columns"):
-                for name, keys in self.groups:
-                    yield KeyTable(name, keys)
+            with Vertical(id="help-columns"):
+                size = per_row(self.app.size.width, len(self.groups))
+                for start in range(0, len(self.groups), size):
+                    with Horizontal(classes="help-row"):
+                        for name, keys in self.groups[start : start + size]:
+                            yield KeyTable(name, keys)
