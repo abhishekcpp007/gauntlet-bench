@@ -84,6 +84,7 @@ def machine_line(
     if width is None:
         text.append_text(dot)
     else:
+        text.truncate(width, overflow=look.overflow)
         room = width - text.cell_len - dot.cell_len - label.cell_len
         if room < min(len(path), MIN_PATH_WIDTH):
             text.append("\n")
