@@ -22,6 +22,7 @@ from .episode_factories import (
     source_with,
 )
 from .factories import GOLDEN, HOSTILE_PATCH, SHIPPED_LIVE, failing_source, make_source, screen_text
+from .wait import settle, wait_until
 
 WIDE = (120, 36)
 SMALL = (80, 24)
@@ -33,12 +34,6 @@ TAMPERED = "mahmoud__boltons-471__cheater__0"
 GHOST = "hukkin__tomli-318__cheater:ghost__0"
 SUMMARY = "hukkin__tomli-318__oracle__0"
 QUICK_SECONDS = 3.0
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause()
 
 
 async def open_episode(app: GauntletApp, pilot, episode_id: str, run_id: str = GOLDEN) -> EpisodeScreen:
@@ -258,14 +253,14 @@ async def test_test_list_filters_by_text_and_facet_and_stays_quick():
         assert time.perf_counter() - started < QUICK_SECONDS
         await pilot.press("slash")
         await pilot.press(*"test_42")
-        await pilot.pause(0.3)
+        await wait_until(pilot, lambda: all("test_42" in t.id for t in grid.rows), what="the filter")
         await settle(app, pilot)
         assert {t.id for t in grid.rows} >= {"tests/test_big.py::test_42", "tests/test_big.py::test_4200"}
         assert all("test_42" in t.id for t in grid.rows)
         assert f"of {MANY_TESTS:,}" in screen_text(app)
         screen.query_one("#tests-filter", FilterBar).clear()
         screen.query_one("#tests-filter", FilterBar).set_facet("status", "FAILED")
-        await pilot.pause(0.3)
+        await wait_until(pilot, lambda: all(t.status == "FAILED" for t in grid.rows), what="the facet")
         await settle(app, pilot)
         assert grid.rows and all(t.status == "FAILED" for t in grid.rows)
         screen.filter_tests("nothing-matches", {})

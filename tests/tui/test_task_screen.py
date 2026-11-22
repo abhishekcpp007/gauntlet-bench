@@ -18,6 +18,7 @@ from .factories import (
     make_task_detail,
     screen_text,
 )
+from .wait import settle
 
 WIDE = (140, 40)
 SMALL = (80, 24)
@@ -25,12 +26,6 @@ TOMLI = "hukkin__tomli-318"
 TABLIB = "jazzband__tablib-v3.8.0_to_v3.9.0"
 EXSOLVE = "unjs__exsolve-80"
 SWE_TABS = ["statement", "tests", "leaks", "patches", "episodes"]
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause()
 
 
 async def open_task(app: GauntletApp, pilot, instance_id: str = TOMLI) -> TaskScreen:

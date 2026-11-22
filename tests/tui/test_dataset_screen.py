@@ -4,15 +4,10 @@ from gauntlet.tui.screens.task import TaskScreen
 from gauntlet.tui.screens.tasks import TaskTable
 
 from .factories import LHT, LIVE, WidgetApp, failing_source, make_source, screen_text
+from .wait import settle
 
 WIDE = (140, 40)
 SMALL = (80, 24)
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause()
 
 
 async def open_dataset(app: GauntletApp, pilot, dataset_id: str = LIVE) -> DatasetScreen:

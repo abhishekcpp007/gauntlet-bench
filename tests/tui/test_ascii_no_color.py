@@ -9,22 +9,10 @@ from gauntlet.tui.widgets.timeline import StepList
 
 from .factories import screen_text
 from .sample import LIVE_ID, PLUGGY, PLUGGY_CHEATER, RUN_ID, TOMLI, TOMLI_CHEATER, sample_store
+from .wait import settle
 
 SIZE = (140, 40)
 AGENT_TEXT_TABS = {None, "statement"}
-
-SETTLE_TRIES = 50
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    """Wait for workers, then for the screen's body to be mounted, which can lag on a busy machine."""
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    for _ in range(SETTLE_TRIES):
-        await pilot.pause()
-        if not getattr(app.screen, "loading", False):
-            return
-        await app.workers.wait_for_complete()
 
 
 async def every_tab(app: GauntletApp, pilot):

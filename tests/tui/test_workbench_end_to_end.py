@@ -4,7 +4,6 @@ Docker and no network: the machine check is the only thing swapped out, since it
 
 from __future__ import annotations
 
-import time
 from dataclasses import replace
 from pathlib import Path
 
@@ -22,6 +21,7 @@ from gauntlet.tui.workspace import Workspace
 from .factories import screen_text
 from .fakejobs import fake_machine, fill
 from .sample import SAMPLE_DATASETS, SAMPLE_RUN
+from .wait import settle, wait_until
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "cheatcatcher" / "examples"
 CHEATING_DIFF = EXAMPLES / "conftest_force_pass.diff"
@@ -37,12 +37,6 @@ def start(root: Path) -> GauntletApp:
     runner = SubprocessJobRunner(workspace, machine=lambda: machine)
     store = Store.load(SAMPLE_DATASETS, [SAMPLE_RUN], workspace=workspace.root)
     return GauntletApp(store, jobs=runner, reload=store.reload)
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause(POLL_SECONDS)
 
 
 async def open_workbench(app: GauntletApp, pilot) -> WorkbenchScreen:
@@ -73,10 +67,12 @@ async def test_scan_a_cheating_patch_through_a_real_process(tmp_path: Path):
         job_id = app.screen.job_id
         jobs = app.jobs
         assert jobs is not None
-        deadline = time.monotonic() + REAL_TIMEOUT_SECONDS
-        while jobs.job(job_id).state not in FINISHED:
-            assert time.monotonic() < deadline, "the scan didn't finish"
-            await pilot.pause(POLL_SECONDS)
+        await wait_until(
+            pilot,
+            lambda: jobs.job(job_id).state in FINISHED,
+            what="the scan to finish",
+            timeout=REAL_TIMEOUT_SECONDS,
+        )
         await settle(app, pilot)
         await settle(app, pilot)
         record = jobs.job(job_id)

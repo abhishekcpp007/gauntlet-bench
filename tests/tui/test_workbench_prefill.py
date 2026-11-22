@@ -26,6 +26,7 @@ from gauntlet.tui.workbench.calibrate import Calibrate
 
 from .factories import GOLDEN, LHT, LIVE, LIVE_JS, make_source, screen_text
 from .fakejobs import FakeJobRunner, fake_machine, make_spec
+from .wait import settle
 
 WIDE = (140, 40)
 SMALL = (80, 24)
@@ -70,14 +71,6 @@ FORMS: dict[str, type[ActionForm]] = {
 
 def workbench_app(runner: FakeJobRunner | None = None) -> GauntletApp:
     return GauntletApp(make_source(), jobs=runner or FakeJobRunner(), forms=FORMS)
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause(0.1)
-    await app.workers.wait_for_complete()
-    await pilot.pause()
 
 
 async def opened(app: GauntletApp, pilot, action_id: str, **prefill: str) -> WorkbenchScreen:

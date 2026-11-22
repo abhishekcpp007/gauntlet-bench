@@ -20,21 +20,9 @@ from .sample import (
     TOMLI_CHEATER,
     sample_store,
 )
+from .wait import settle
 
 SIZES = [(140, 40), (80, 24)]
-
-SETTLE_TRIES = 50
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    """Wait for workers, then for the screen's body to be mounted, which can lag on a busy machine."""
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    for _ in range(SETTLE_TRIES):
-        await pilot.pause()
-        if not getattr(app.screen, "loading", False):
-            return
-        await app.workers.wait_for_complete()
 
 
 async def visit_every_tab(app: GauntletApp, pilot) -> int:

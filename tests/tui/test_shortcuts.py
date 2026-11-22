@@ -26,6 +26,7 @@ from gauntlet.tui.workbench.base import (
 
 from .factories import GOLDEN, LIVE, SHIPPED_LIVE, make_source, screen_text
 from .fakejobs import FakeJobRunner, make_spec
+from .wait import settle
 
 WIDE = (140, 40)
 SMALL = (80, 24)
@@ -64,14 +65,6 @@ ALL_KEYS = tuple(SHORTCUT_KEYS.values())
 
 def make_app(*, runner: bool = True) -> GauntletApp:
     return GauntletApp(make_source(), jobs=FakeJobRunner() if runner else None, forms=FORMS)
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause(0.1)
-    await app.workers.wait_for_complete()
-    await pilot.pause()
 
 
 def footer(app: GauntletApp) -> str:

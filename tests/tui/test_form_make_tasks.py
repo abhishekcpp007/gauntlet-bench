@@ -28,6 +28,7 @@ from gauntlet.tui.workspace import Workspace
 from .factories import LIVE, make_source, screen_text
 from .fakejobs import NEXT_STEP, FakeJobRunner, fill, form_app, row_errors
 from .sample import REPO_DATASETS, SAMPLE_DATASETS, TOMLI
+from .wait import settle, wait_until
 
 WIDE = (140, 40)
 SMALL = (80, 24)
@@ -37,8 +38,6 @@ FIX_RUNS = 3
 NO_TASKS = 1
 TOMLI_TITLE = "Set smaller MAX_INLINE_NESTING"
 HOSTILE = "[red]x[/red] \x1b[31mboom"
-PATIENCE = 50
-STEP_SECONDS = 0.1
 OUTPUT_FLAGS = {"output", "rejected", "prs", "fn", "cmd", "verbose"}
 
 
@@ -59,12 +58,6 @@ def parse(monkeypatch):
         return {k: v for k, v in vars(seen.pop()).items() if k not in OUTPUT_FLAGS}
 
     return run
-
-
-async def settle(app, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause(0.1)
 
 
 async def mounted_form(app, pilot) -> FormView:
@@ -261,11 +254,12 @@ async def finish(app: GauntletApp, pilot, runner: FakeJobRunner, spec: JobSpec) 
     await settle(app, pilot)
     screen = app.screen
     assert isinstance(screen, JobScreen)
-    for _ in range(PATIENCE):
+
+    def result_read() -> bool:
         results = screen.query(BuildResult)
-        if spec.action != "make_tasks" or (results and results.first().summary is not None):
-            break
-        await pilot.pause(STEP_SECONDS)
+        return spec.action != "make_tasks" or bool(results and results.first().summary is not None)
+
+    await wait_until(pilot, result_read, what="the build result")
     await settle(app, pilot)
     return screen
 

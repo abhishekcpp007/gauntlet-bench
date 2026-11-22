@@ -368,6 +368,11 @@ class GauntletApp(App[None]):
         else:
             self.call_after_refresh(self.restore_when_ready, screen, place, tries - 1)
 
+    @property
+    def events_pending(self) -> bool:
+        """Whether job events have come in that the screens haven't been given yet."""
+        return self._flush_scheduled or not self._pending.empty()
+
     def remember_job(self, record: JobRecord) -> None:
         """A job this app just submitted, so the header and the list know it before its first event."""
         self.job_records.setdefault(record.id, record)

@@ -20,16 +20,11 @@ from gauntlet.tui.widgets.matrix import Matrix
 
 from .factories import GOLDEN, SHIPPED_LIVE, failing_source, screen_text
 from .runs_factories import RunsSource, runs_source
+from .wait import settle
 
 WIDE = (140, 40)
 SMALL = (80, 24)
 TOMLI = "hukkin__tomli-318"
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause()
 
 
 async def open_run(app: GauntletApp, pilot, run_id: str = GOLDEN) -> RunScreen:

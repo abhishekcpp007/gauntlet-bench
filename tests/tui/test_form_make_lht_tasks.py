@@ -26,6 +26,7 @@ from gauntlet.tui.workspace import Workspace
 from .factories import make_source, screen_text
 from .fakejobs import FakeJobRunner, fake_machine, fill, form_app, row_errors
 from .sample import SAMPLE_DATASETS
+from .wait import settle, wait_until
 
 WIDE = (140, 40)
 SMALL = (80, 24)
@@ -40,8 +41,6 @@ LISTED = [
 MAX_PRS = 12
 GOLD_LINES = 900
 FAILED_CLONE = 128
-PATIENCE = 50
-STEP_SECONDS = 0.1
 OUTPUT_FLAGS = {"output", "rejected", "fn", "cmd", "verbose"}
 
 
@@ -69,12 +68,6 @@ def parse(monkeypatch):
     return run
 
 
-async def settle(app, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause(0.1)
-
-
 async def open_form(app: GauntletApp, pilot, tmp_path: Path) -> tuple[WorkbenchScreen, FormView]:
     await settle(app, pilot)
     await pilot.press("5")
@@ -92,11 +85,7 @@ async def open_form(app: GauntletApp, pilot, tmp_path: Path) -> tuple[WorkbenchS
 
 async def until(pilot, check) -> None:
     """Pause until `check()` holds, so a slow machine doesn't race the job events."""
-    for _ in range(PATIENCE):
-        if check():
-            return
-        await pilot.pause(STEP_SECONDS)
-    assert check()
+    await wait_until(pilot, check)
 
 
 def status(app: GauntletApp) -> str:

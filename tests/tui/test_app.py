@@ -2,7 +2,7 @@ import threading
 from collections.abc import Iterable
 from dataclasses import replace
 
-from textual.command import CommandPalette
+from textual.command import CommandList, CommandPalette
 from textual.widget import Widget
 from textual.widgets import Input, Static, TabbedContent, TabPane
 
@@ -22,15 +22,15 @@ from gauntlet.tui.widgets import Column, DataGrid, FacetGroup, FacetPicker, Filt
 from gauntlet.tui.widgets.chrome import TopBar
 
 from .factories import GOLDEN, LIVE, TASK_ROWS, empty_source, failing_source, make_source, screen_text
+from .wait import settle, wait_until
 
 WIDE = (120, 36)
 SMALL = (80, 24)
 
 
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause()
+def palette_has_hits(app: GauntletApp) -> bool:
+    lists = app.screen.query(CommandList)
+    return bool(lists) and lists.first().option_count > 0
 
 
 def top_line(app: GauntletApp) -> str:
@@ -153,7 +153,7 @@ async def test_palette_jumps_to_a_task_by_id():
         await pilot.pause()
         assert isinstance(app.screen, CommandPalette)
         await pilot.press(*"pluggy-759")
-        await pilot.pause(0.5)
+        await wait_until(pilot, lambda: palette_has_hits(app), what="palette results")
         await pilot.press("enter")
         await settle(app, pilot)
         assert isinstance(app.screen, TaskScreen) and app.screen.instance_id == "pytest-dev__pluggy-759"
@@ -165,7 +165,7 @@ async def test_palette_jumps_to_an_episode():
         await settle(app, pilot)
         await pilot.press("ctrl+p")
         await pilot.press(*"boltons-471__cheater__0")
-        await pilot.pause(0.5)
+        await wait_until(pilot, lambda: palette_has_hits(app), what="palette results")
         await pilot.press("enter")
         await settle(app, pilot)
         assert isinstance(app.screen, EpisodeScreen)

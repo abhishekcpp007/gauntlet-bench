@@ -15,6 +15,7 @@ from gauntlet.tui.widgets.outcome import OutcomeView
 
 from .factories import GOLDEN, LIVE, make_source, screen_text
 from .fakejobs import NEXT_STEP, FakeJobRunner, make_spec
+from .wait import settle
 
 WIDE = (120, 36)
 SMALL = (80, 24)
@@ -34,12 +35,6 @@ CHEATING_REPORT = {
         }
     ],
 }
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause(0.1)
 
 
 async def open_job(app: GauntletApp, pilot, job_id: str) -> JobScreen:

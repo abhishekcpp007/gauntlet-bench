@@ -7,16 +7,11 @@ from gauntlet.tui.screens.tasks import TasksScreen, TaskTable
 from gauntlet.tui.widgets import FacetPicker, FilterBar
 
 from .factories import LHT, TASK_ROWS, empty_source, failing_source, make_source, screen_text
+from .wait import settle
 
 WIDE = (140, 40)
 SMALL = (80, 24)
 KEY_COLUMNS = {"id", "repo", "f2p", "leak"}
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause()
 
 
 async def open_tasks(app: GauntletApp, pilot) -> TaskTable:

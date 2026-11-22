@@ -6,15 +6,10 @@ from gauntlet.tui.screens.runs import INTRO, RunsScreen, matches
 from gauntlet.tui.widgets import DataGrid
 
 from .factories import GOLDEN, SHIPPED_LIVE, empty_source, failing_source, make_source, screen_text
+from .wait import settle
 
 WIDE = (140, 36)
 SMALL = (80, 24)
-
-
-async def settle(app: GauntletApp, pilot) -> None:
-    await pilot.pause()
-    await app.workers.wait_for_complete()
-    await pilot.pause()
 
 
 async def open_runs(app: GauntletApp, pilot) -> DataGrid:

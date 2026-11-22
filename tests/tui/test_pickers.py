@@ -14,6 +14,7 @@ from gauntlet.tui.widgets.pickers import (
 from gauntlet.tui.workbench.base import Choice
 
 from .factories import GOLDEN, LHT, LIVE, LIVE_JS, WidgetApp, make_source, screen_text
+from .wait import wait_until
 
 SIZE = (100, 30)
 HOSTILE = "[red]x[/red]"
@@ -89,13 +90,19 @@ async def test_a_failing_list_says_why():
         assert "Couldn't load the choices: OSError: disk gone" in screen_text(pilot.app)
 
 
+def browser_ready(app) -> bool:
+    if not isinstance(app.screen, PathBrowser):
+        return False
+    return bool(app.screen.query_one(DirectoryTree).root.children)
+
+
 async def test_browsing_picks_a_file(tmp_path: Path):
     (tmp_path / "fix.diff").write_text("diff")
     picker = PathPicker("file", value=str(tmp_path))
     async with WidgetApp(picker).run_test(size=SIZE) as pilot:
         picker.input.focus()
         await pilot.press("ctrl+o")
-        await pilot.pause(0.3)
+        await wait_until(pilot, lambda: browser_ready(pilot.app), what="the folder tree")
         assert isinstance(pilot.app.screen, PathBrowser)
         tree = pilot.app.screen.query_one(DirectoryTree)
         assert Path(tree.path) == tmp_path
@@ -110,7 +117,7 @@ async def test_browsing_picks_a_folder(tmp_path: Path):
     async with WidgetApp(picker).run_test(size=SIZE) as pilot:
         picker.input.focus()
         await pilot.press("ctrl+o")
-        await pilot.pause(0.3)
+        await wait_until(pilot, lambda: browser_ready(pilot.app), what="the folder tree")
         await pilot.press("down", "s")
         await pilot.pause()
         assert picker.value == str(tmp_path / "runs")
@@ -121,7 +128,7 @@ async def test_esc_leaves_the_path_alone(tmp_path: Path):
     async with WidgetApp(picker).run_test(size=SIZE) as pilot:
         picker.input.focus()
         await pilot.press("ctrl+o")
-        await pilot.pause(0.3)
+        await wait_until(pilot, lambda: browser_ready(pilot.app), what="the folder tree")
         await pilot.press("backspace", "escape")
         await pilot.pause()
         assert picker.value == str(tmp_path)
