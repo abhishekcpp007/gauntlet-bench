@@ -24,7 +24,7 @@ claude = ["anthropic>=2.3"]
 gauntlet = "gauntlet.harness.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/abhishekcpp007/NEW_REPO"
+Homepage = "https://github.com/abhishekcpp007/gauntlet-bench"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6", "anthropic>=2.3"]
