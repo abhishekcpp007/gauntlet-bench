@@ -40,6 +40,8 @@ LISTED = [
 MAX_PRS = 12
 GOLD_LINES = 900
 FAILED_CLONE = 128
+PATIENCE = 50
+STEP_SECONDS = 0.1
 OUTPUT_FLAGS = {"output", "rejected", "fn", "cmd", "verbose"}
 
 
@@ -88,6 +90,15 @@ async def open_form(app: GauntletApp, pilot, tmp_path: Path) -> tuple[WorkbenchS
     return screen, view
 
 
+async def until(pilot, check) -> None:
+    """Pause until `check()` holds, so a slow machine doesn't race the job events."""
+    for _ in range(PATIENCE):
+        if check():
+            return
+        await pilot.pause(STEP_SECONDS)
+    assert check()
+
+
 def status(app: GauntletApp) -> str:
     view = app.screen.query_one(ListerStatus)
     return f"{view.state}: {view.message}"
@@ -103,6 +114,7 @@ async def list_ranges(app: GauntletApp, pilot, runner: FakeJobRunner, view: Form
     await settle(app, pilot)
     runner.run_until_idle()
     await settle(app, pilot)
+    await until(pilot, lambda: not status(app).startswith("listing"))
 
 
 def test_the_form_is_found():
@@ -133,11 +145,13 @@ async def test_listing_runs_in_the_form_and_fills_the_ranges(tmp_path: Path):
         await pilot.press("enter")
         await settle(app, pilot)
         assert app.screen is screen and runner.submitted[-1].action == "list_ranges"
+        await until(pilot, lambda: status(app).startswith("listing:"))
         runner.step()
         await settle(app, pilot)
         assert status(app).startswith("listing: Listing the ranges of pytest-dev/pluggy")
         runner.run_until_idle()
         await settle(app, pilot)
+        await until(pilot, lambda: status(app).startswith("found:"))
         assert status(app) == "found: 2 ranges of pytest-dev/pluggy. Pick the ones to build under Ranges."
         ranges = view.row("ranges").control
         assert isinstance(ranges, SelectionList) and ranges.option_count == len(RANGES)
@@ -245,8 +259,10 @@ async def test_a_cancelled_listing_can_be_tried_again(tmp_path: Path):
         await settle(app, pilot)
         await pilot.press("enter")
         await settle(app, pilot)
+        await until(pilot, lambda: status(app).startswith("listing:"))
         runner.cancel(runner.jobs()[0].id)
         await settle(app, pilot)
+        await until(pilot, lambda: status(app).startswith("cancelled:"))
         assert status(app).startswith("cancelled: Listing was cancelled")
 
 

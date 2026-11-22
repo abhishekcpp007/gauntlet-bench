@@ -36,6 +36,8 @@ FIX_RUNS = 3
 NO_TASKS = 1
 TOMLI_TITLE = "Set smaller MAX_INLINE_NESTING"
 HOSTILE = "[red]x[/red] \x1b[31mboom"
+PATIENCE = 50
+STEP_SECONDS = 0.1
 OUTPUT_FLAGS = {"output", "rejected", "prs", "fn", "cmd", "verbose"}
 
 
@@ -256,9 +258,14 @@ async def finish(app: GauntletApp, pilot, runner: FakeJobRunner, spec: JobSpec) 
     await settle(app, pilot)
     runner.run_until_idle()
     await settle(app, pilot)
-    await settle(app, pilot)
     screen = app.screen
     assert isinstance(screen, JobScreen)
+    for _ in range(PATIENCE):
+        results = screen.query(BuildResult)
+        if spec.action != "make_tasks" or (results and results.first().summary is not None):
+            break
+        await pilot.pause(STEP_SECONDS)
+    await settle(app, pilot)
     return screen
 
 
