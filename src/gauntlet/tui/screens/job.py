@@ -184,6 +184,8 @@ class JobScreen(GauntletScreen):
     """See the module docstring."""
 
     CSS_PATH = "job.tcss"
+    HELP_GROUP = "Job"
+    HELP_EVERY_PANE = True
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("x", "cancel_job", "Cancel"),
         Binding("o", "open_output", "Open"),

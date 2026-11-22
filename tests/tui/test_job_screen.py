@@ -365,3 +365,21 @@ async def test_a_check_that_stopped_without_finding_anything_shows_no_result():
         await settle(app, pilot)
         assert not screen.query_one("#job-outcome").display
         assert "✗ failed" in screen_text(app)
+
+
+async def test_help_names_the_job_group_and_every_panes_keys():
+    from gauntlet.tui.screens.help import HelpScreen, collect
+
+    runner = FakeJobRunner()
+    app = GauntletApp(make_source(), jobs=runner)
+    async with app.run_test(size=WIDE) as pilot:
+        record = runner.submit(make_spec())
+        runner.start(record.id)
+        screen = await open_job(app, pilot, record.id)
+        groups = dict(collect(screen))
+        job = {key.description for key in groups["Job"]}
+        assert {"Cancel", "Follow", "Copy", "Search"} <= job
+        assert "Log" in groups and "Log search" in groups
+        await pilot.press("question_mark")
+        await pilot.pause()
+        assert isinstance(app.screen, HelpScreen) and "Job" in screen_text(app)
