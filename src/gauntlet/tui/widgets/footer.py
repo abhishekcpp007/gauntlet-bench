@@ -15,7 +15,8 @@ from textual.widgets._footer import FooterKey
 
 EXTRA_ACTION = "app.workbench("
 KEY_PADDING = 3
-PALETTE_ROOM = 14
+PALETTE_ROOM = 11
+"""The palette key on the right: a divider, `^p` and `Palette`."""
 
 
 def is_extra(binding: Binding) -> bool:

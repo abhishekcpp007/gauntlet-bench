@@ -91,9 +91,11 @@ async def test_a_failing_list_says_why():
 
 
 def browser_ready(app) -> bool:
+    """The browser is up and its tree has read its folder."""
     if not isinstance(app.screen, PathBrowser):
         return False
-    return bool(app.screen.query_one(DirectoryTree).root.children)
+    root = app.screen.query_one(DirectoryTree).root
+    return root.data is not None and root.data.loaded
 
 
 async def test_browsing_picks_a_file(tmp_path: Path):
