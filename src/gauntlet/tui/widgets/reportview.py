@@ -36,7 +36,7 @@ HEADING = "#"
 BULLET = "- "
 STRONG = "**"
 NO_VALUE = "-"
-CELL_GAP = 2
+CELL_PADDING = (0, 1)
 LOAD_GROUP = "report-load"
 WIDEST_TABLE = 10_000
 NO_REPORT = "The report printed no table. The job's log says why."
@@ -103,7 +103,7 @@ def parse_report(lines: Sequence[str]) -> tuple[Block, ...]:
         elif line.startswith(HEADING):
             close()
             blocks.append(Heading(line.lstrip(HEADING).strip()))
-        elif line.startswith(STRONG) and line.endswith(STRONG) and len(line) > len(STRONG) * 2:
+        elif line.startswith(STRONG) and line.endswith(STRONG) and len(line) > len(STRONG + STRONG):
             close()
             blocks.append(Heading(line[len(STRONG) : -len(STRONG)]))
         elif line.startswith(BULLET):
@@ -132,7 +132,7 @@ def draw_table(table: ReportTable, look: Look) -> Table:
         box=box.ASCII if look.ascii else box.SIMPLE_HEAD,
         border_style=look.style("muted"),
         header_style="bold",
-        padding=(0, 1),
+        padding=CELL_PADDING,
         pad_edge=False,
         show_edge=False,
     )

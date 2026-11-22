@@ -1,4 +1,4 @@
-"""Leak check: the 8 leak checks again on a task set, the way `gauntlet leakcheck` runs them."""
+"""Leak check: every leak check again on a task set, the way `gauntlet leakcheck` runs them."""
 
 from __future__ import annotations
 
