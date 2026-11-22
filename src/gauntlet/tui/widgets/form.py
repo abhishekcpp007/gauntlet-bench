@@ -579,9 +579,11 @@ class FormView(VerticalScroll):
         self.focus_empty()
 
     def focus_empty(self) -> None:
-        """Focus the first required field that's still empty, or Review when none is."""
+        """Focus the first required field that's still empty, or Review when none is. Review
+        takes focus without scrolling, so the filled values stay in sight."""
         for row in self.rows:
             if row.field.required and row.raw in (None, "", ()):
                 row.focus_control()
                 return
-        self.query_one(ReviewButton).focus()
+        self.query_one(ReviewButton).focus(scroll_visible=False)
+        self.scroll_home(animate=False)
