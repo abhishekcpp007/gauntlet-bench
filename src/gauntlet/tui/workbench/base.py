@@ -418,6 +418,11 @@ class ActionForm:
         after, or None to go above the fields. The default adds none."""
         return ()
 
+    def outcome(self, record: JobRecord) -> Widget | None:
+        """A widget for the Job screen's Result pane once `record` has finished: what the job found
+        or made, read in a thread. None, the default, leaves the pane out."""
+        return None
+
     def after(self, job: JobRecord, app: GauntletApp) -> bool:
         """Open what `job` made. Returns False when there's nothing to open."""
         for output in job.spec.outputs:

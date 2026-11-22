@@ -17,7 +17,7 @@ from gauntlet.tui.screens.confirm import ConfirmJob
 from gauntlet.tui.screens.dataset import DatasetScreen
 from gauntlet.tui.screens.job import JobScreen
 from gauntlet.tui.screens.workbench import ActionList, WorkbenchScreen
-from gauntlet.tui.widgets.buildresult import BuildResult, BuildWatch
+from gauntlet.tui.widgets.buildresult import BuildResult
 from gauntlet.tui.widgets.form import FormBanner, FormView
 from gauntlet.tui.widgets.formextras import FormNote
 from gauntlet.tui.workbench import forms
@@ -170,7 +170,6 @@ async def test_the_form_says_what_it_costs(tmp_path: Path):
         assert f"kept {LIVE_TASKS} tasks from {LIVE_PRS} PRs" in note
         text = screen_text(app)
         assert "Full runs the whole suite" in text and "flaky" in text
-        assert len(app.query(BuildWatch)) == 1
 
 
 async def open_form(app: GauntletApp, pilot, ws: Workspace) -> tuple[WorkbenchScreen, FormView]:

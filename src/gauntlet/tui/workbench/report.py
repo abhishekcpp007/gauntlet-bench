@@ -5,8 +5,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from textual.widget import Widget
+
 from .. import actions
 from ..jobtypes import JobRecord, JobSpec
+from ..widgets.reportview import ReportOutcome, ReportScreen
 from .base import ActionForm, DateField, FieldError, RunField, SwitchField, Values, register
 
 if TYPE_CHECKING:
@@ -44,8 +47,9 @@ class Report(ActionForm):
             values.workspace, results, cutoff=values.text("cutoff"), html=values.flag("html")
         )
 
-    def after(self, job: JobRecord, app: GauntletApp) -> bool:
-        from ..widgets.reportview import ReportScreen
+    def outcome(self, record: JobRecord) -> Widget | None:
+        return ReportOutcome(record) if record.state == "succeeded" else None
 
+    def after(self, job: JobRecord, app: GauntletApp) -> bool:
         app.push_screen(ReportScreen(job.id, job.spec.title))
         return True

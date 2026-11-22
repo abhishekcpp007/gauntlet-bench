@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from textual.widget import Widget
+
 from .. import actions
 from .. import format as fmt
-from ..jobtypes import JobSpec
+from ..jobtypes import JobRecord, JobSpec
 from ..models import DataSource
+from ..widgets.outcome import check_outcome
 from .base import ActionForm, Choice, MultiChoiceField, Values, register
 
 NONE_PICKED: tuple[str, ...] = ()
@@ -35,6 +38,9 @@ class CheckEnvs(ActionForm):
             default=NONE_PICKED,
         ),
     )
+
+    def outcome(self, record: JobRecord) -> Widget | None:
+        return check_outcome(record)
 
     def build(self, values: Values) -> JobSpec:
         return actions.check_envs(values.items("tasks"))

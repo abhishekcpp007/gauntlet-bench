@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+from textual.widget import Widget
+
 from .. import actions
-from ..jobtypes import JobSpec
+from ..jobtypes import JobRecord, JobSpec
 from ..models import DataSource
+from ..widgets.outcome import check_outcome
 from .base import (
     ActionForm,
     Choice,
@@ -61,6 +64,9 @@ class Calibrate(ActionForm):
             maximum=actions.MAX_WORKERS,
         ),
     )
+
+    def outcome(self, record: JobRecord) -> Widget | None:
+        return check_outcome(record)
 
     def build(self, values: Values) -> JobSpec:
         tasks = values.path("tasks")

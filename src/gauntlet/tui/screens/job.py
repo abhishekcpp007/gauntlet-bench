@@ -12,7 +12,6 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
-from functools import partial
 from pathlib import Path
 from typing import ClassVar
 
@@ -30,7 +29,6 @@ from textual.widgets.option_list import Option
 from textual.worker import Worker, WorkerState
 
 from .. import format as fmt
-from ..actions import Outcome, read_outcome
 from ..jobtypes import FINISHED, JobEvent, JobRecord, LogLine, Output, Stream
 from ..theme import FOUND
 from ..widgets.joblog import LOG_WINDOW, JobLog, LogLines
@@ -51,7 +49,6 @@ from .confirm import ConfirmPrompt
 
 PROMPT = "$ "
 LOAD_GROUP = "job-load"
-OUTCOME_GROUP = "job-outcome"
 SHORT_HEIGHT = 30
 KIND_WIDTH = 10
 CANCEL_DETAIL = "The harness gets an interrupt first so it can close its sandboxes, then a kill if it hangs."
@@ -201,8 +198,7 @@ class JobScreen(GauntletScreen):
         self.record: JobRecord | None = None
         self.loaded = False
         self.buffered: list[JobEvent] = []
-        self.outcome_read = False
-        self.outcome: Outcome | None = None
+        self.outcome_shown = False
         self._ticker: Timer | None = None
 
     def compose_body(self) -> ComposeResult:
@@ -212,7 +208,7 @@ class JobScreen(GauntletScreen):
             commands.border_title = "Commands"
             commands.border_subtitle = "c copies"
             yield commands
-            result = VerticalScroll(OutcomeView(), id="job-outcome", classes="pane")
+            result = VerticalScroll(id="job-outcome", classes="pane")
             result.border_title = "Result"
             result.display = False
             yield result
@@ -252,10 +248,6 @@ class JobScreen(GauntletScreen):
         return self.query_one(JobLog)
 
     def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
-        if event.worker.group == OUTCOME_GROUP:
-            if event.state == WorkerState.SUCCESS and isinstance(event.worker.result, Outcome):
-                self.show_outcome(event.worker.result)
-            return
         if event.worker.group != LOAD_GROUP:
             return
         if event.state == WorkerState.SUCCESS and isinstance(event.worker.result, JobData):
@@ -307,11 +299,9 @@ class JobScreen(GauntletScreen):
         self.query_one(JobHeader).show(record)
         self.query_one(Commands).show(record)
         finished = record.state in FINISHED
-        if finished and not self.outcome_read:
-            self.outcome_read = True
-            self.run_worker(
-                partial(self.read_outcome, record), thread=True, group=OUTCOME_GROUP, exit_on_error=False
-            )
+        if finished and not self.outcome_shown:
+            self.outcome_shown = True
+            self.show_outcome(record)
         outputs = self.query_one(Outputs)
         pane = self.query_one("#job-outputs")
         if finished and record.spec.outputs and not pane.display:
@@ -327,16 +317,21 @@ class JobScreen(GauntletScreen):
         self.update_log_title()
         self.refresh_bindings()
 
-    def read_outcome(self, record: JobRecord) -> Outcome | None:
-        jobs = self.gauntlet.jobs
-        return None if jobs is None else read_outcome(record, jobs.log(record.id))
+    def show_outcome(self, record: JobRecord) -> None:
+        """Put what the job's form says about how it ended in the Result pane, if it says anything."""
+        form = self.gauntlet.forms.get(record.spec.action)
+        widget = form().outcome(record) if form is not None else None
+        if widget is not None:
+            pane = self.query_one("#job-outcome")
+            pane.mount(widget)
+            pane.display = True
 
-    def show_outcome(self, outcome: Outcome) -> None:
-        self.outcome = outcome
-        self.query_one(OutcomeView).show(outcome, self.record.spec.action if self.record else "")
-        self.query_one("#job-outcome").display = True
-        if self.record is not None:
-            self.query_one(JobHeader).show(self.record, found=outcome.found)
+    def on_outcome_view_read(self, event: OutcomeView.Read) -> None:
+        found = event.outcome.found if event.outcome is not None else 0
+        if event.outcome is None:
+            self.query_one("#job-outcome").display = False
+        if self.record is not None and found:
+            self.query_one(JobHeader).show(self.record, found=found)
 
     def _tick(self) -> None:
         self.query_one(JobHeader).tick()

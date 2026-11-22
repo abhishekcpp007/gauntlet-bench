@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from textual.widget import Widget
+
 from .. import actions
-from ..jobtypes import JobSpec
+from ..jobtypes import JobRecord, JobSpec
+from ..widgets.outcome import scan_outcome
 from .base import ActionForm, FieldError, PathField, TextField, Values, register
 
 
@@ -27,6 +30,9 @@ class ScanPatch(ActionForm):
             required=False,
         ),
     )
+
+    def outcome(self, record: JobRecord) -> Widget | None:
+        return scan_outcome(record)
 
     def build(self, values: Values) -> JobSpec:
         patch = values.path("patch")

@@ -342,3 +342,26 @@ async def test_fits_at_80_by_24():
         text = screen_text(app)
         assert "Calibrate on live" in text and "Commands" in text and "Log" in text
         assert "Quit" in footer(app)
+
+
+async def test_a_form_without_an_outcome_leaves_the_result_pane_out():
+    runner = FakeJobRunner()
+    app = GauntletApp(make_source(), jobs=runner, forms={})
+    async with app.run_test(size=WIDE) as pilot:
+        record = runner.submit(scan_patch(EXAMPLES / "honest_fix.diff"))
+        runner.run_until_idle()
+        screen = await open_job(app, pilot, record.id)
+        assert not screen.query_one("#job-outcome").display
+
+
+async def test_a_check_that_stopped_without_finding_anything_shows_no_result():
+    runner = FakeJobRunner()
+    runner.script("calibrate", ["Traceback: it broke"], exit_code=1)
+    app = GauntletApp(make_source(), jobs=runner)
+    async with app.run_test(size=WIDE) as pilot:
+        record = runner.submit(make_spec(outputs=()))
+        runner.run_until_idle()
+        screen = await open_job(app, pilot, record.id)
+        await settle(app, pilot)
+        assert not screen.query_one("#job-outcome").display
+        assert "✗ failed" in screen_text(app)

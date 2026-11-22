@@ -24,7 +24,7 @@ from textual.widget import Widget
 from textual.worker import Worker, WorkerState
 
 from .. import format as fmt
-from ..jobtypes import LogLine
+from ..jobtypes import JobRecord, JobRunner, LogLine
 from ..screens.base import GauntletScreen
 from ..theme import Look
 from .states import ErrorState, describe_error
@@ -246,6 +246,43 @@ class ReportView(Vertical):
 def report_lines(lines: Sequence[LogLine]) -> tuple[str, ...]:
     """What the report printed: its stdout, without warnings on stderr."""
     return tuple(line.text for line in lines if line.stream != "err")
+
+
+class ReportOutcome(Vertical):
+    """A finished report job's leaderboard, for the Job screen's Result pane. Reads the job's log in
+    a thread, so it shows whether or not the job also wrote an HTML page."""
+
+    DEFAULT_CSS = """
+    ReportOutcome {
+        height: auto;
+    }
+    """
+
+    def __init__(self, record: JobRecord) -> None:
+        super().__init__()
+        self.record = record
+
+    def compose(self) -> ComposeResult:
+        yield ReportView()
+
+    def on_mount(self) -> None:
+        self.run_worker(self.read, thread=True, group=LOAD_GROUP, exit_on_error=False)
+
+    def read(self) -> tuple[Block, ...]:
+        jobs: JobRunner | None = getattr(self.app, "jobs", None)
+        if jobs is None:
+            raise LookupError("the Workbench isn't on")
+        return parse_report(report_lines(jobs.log_lines(self.record.id)))
+
+    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        if event.worker.group != LOAD_GROUP:
+            return
+        event.stop()
+        if event.state == WorkerState.SUCCESS and isinstance(event.worker.result, tuple):
+            self.query_one(ReportView).show(event.worker.result)
+        elif event.state == WorkerState.ERROR and event.worker.error is not None:
+            self.remove_children()
+            self.mount(ErrorState("Couldn't read the report", describe_error(event.worker.error)))
 
 
 class ReportScreen(GauntletScreen):

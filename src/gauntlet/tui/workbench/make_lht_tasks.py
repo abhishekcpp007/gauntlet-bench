@@ -13,8 +13,8 @@ from textual.widget import Widget
 
 from .. import actions
 from ..actions import ReleaseRange
-from ..jobtypes import JobSpec
-from ..widgets.buildresult import BuildWatch
+from ..jobtypes import FINISHED, JobRecord, JobSpec
+from ..widgets.buildresult import BuildResult
 from ..widgets.form import FormView
 from ..widgets.formextras import FormNote
 from ..widgets.rangelister import ListFields, RangeLister
@@ -130,10 +130,12 @@ class MakeLhtTasks(ActionForm):
     def __init__(self) -> None:
         self.listed: tuple[str, str | None, tuple[ReleaseRange, ...]] | None = None
 
+    def outcome(self, record: JobRecord) -> Widget | None:
+        return BuildResult(record, note=RARELY_KEPT) if record.state in FINISHED else None
+
     def extras(self, view: FormView) -> Sequence[tuple[Widget, str | None]]:
         return (
             (FormNote(ABOUT, id="lht-about"), None),
-            (BuildWatch(self.action_id, note=RARELY_KEPT), None),
             (RangeLister(view, FIELDS, self.remember), FIELDS.prereleases),
         )
 

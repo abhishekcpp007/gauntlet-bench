@@ -8,7 +8,7 @@ from gauntlet.tui.screens.confirm import ConfirmJob
 from gauntlet.tui.screens.job import JobScreen
 from gauntlet.tui.widgets.form import NO_WORKSPACE, FormView
 from gauntlet.tui.widgets.jobstatus import command_line
-from gauntlet.tui.widgets.reportview import ReportScreen, ReportView
+from gauntlet.tui.widgets.reportview import ReportOutcome, ReportScreen, ReportView
 from gauntlet.tui.workbench import forms
 from gauntlet.tui.workbench.report import Report
 from gauntlet.tui.workspace import Workspace
@@ -170,3 +170,19 @@ async def test_fits_at_80_by_24(tmp_path: Path):
         text = screen_text(app)
         assert isinstance(app.screen, ReportScreen) and "Policy" in text
         assert "Quit" in text.splitlines()[-1]
+
+
+@pytest.mark.parametrize("html", [True, False])
+async def test_the_leaderboard_shows_in_the_result_pane_with_or_without_a_page(tmp_path: Path, html: bool):
+    spec = actions.report(Workspace(tmp_path), RESULTS, html=html, name=NAME)
+    runner = FakeJobRunner()
+    runner.script("report", real_report())
+    app = GauntletApp(sample_store(), jobs=runner)
+    async with app.run_test(size=WIDE) as pilot:
+        record = runner.submit(spec)
+        runner.run_until_idle()
+        screen = await open_job(app, pilot, record.id)
+        await settle(app, pilot)
+        pane = screen.query_one("#job-outcome")
+        assert pane.display and pane.query_one(ReportOutcome).query_one(ReportView).blocks
+        assert "Policy" in screen_text(app)

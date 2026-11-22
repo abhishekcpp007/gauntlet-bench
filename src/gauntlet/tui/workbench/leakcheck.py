@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from textual.widget import Widget
+
 from .. import actions
-from ..jobtypes import JobSpec
+from ..jobtypes import JobRecord, JobSpec
+from ..widgets.outcome import check_outcome
 from .base import ActionForm, FieldError, TaskSetField, Values, register
 
 CHECKS_HINT = (
@@ -16,6 +19,9 @@ CHECKS_HINT = (
 class LeakCheck(ActionForm):
     action_id = "leakcheck"
     fields = (TaskSetField(name="tasks", label="Task set", hint=CHECKS_HINT),)
+
+    def outcome(self, record: JobRecord) -> Widget | None:
+        return check_outcome(record)
 
     def build(self, values: Values) -> JobSpec:
         tasks = values.path("tasks")

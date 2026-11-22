@@ -1,34 +1,25 @@
-"""`BuildResult`: what a finished "Make tasks" job built and why it rejected the rest, and
-`BuildWatch`, which puts it in the Job screen's Result pane.
+"""`BuildResult`: what a finished "Make tasks" job built and why it rejected the rest, for the Job
+screen's Result pane. The make-tasks forms return one from `ActionForm.outcome`.
 
 The result reads the job's own files (see `buildfiles`), never its log: how many PRs or release
 ranges went in, how many tasks came out, and each rejection grouped by the stage that turned it
 away, with its PR number, title and the harness's reason. A build that keeps nothing exits 1, so
 the job reads failed; the result says that's a normal outcome and why it happened.
-
-`BuildWatch` is hidden. The Job screen only reads outcomes for scans and checks, so the watch
-follows the screens the app shows and, once a job of its action has finished on one, mounts a
-`BuildResult` in that screen's Result pane. A form mounts one with `formextras.mount_from_loader`.
 """
 
 from __future__ import annotations
 
 from functools import partial
-from weakref import WeakSet
 
 from rich.console import RenderableType
 from rich.table import Table
 from rich.text import Text
-from textual.screen import Screen
-from textual.widget import Widget
 from textual.worker import Worker, WorkerState
 
 from .. import format as fmt
-from ..jobtypes import FINISHED, JobRecord
-from ..screens.job import JobScreen
+from ..jobtypes import JobRecord
 from ..theme import ERROR, FAILED, PASSED, Look
 from .buildfiles import RANGE_UNIT, BuildSummary, Item, read_build
-from .outcome import OutcomeView
 from .states import describe_error
 from .themed import Themed
 
@@ -181,48 +172,3 @@ class BuildResult(Themed):
         if self.summary is None:
             return look.muted(f"Reading what the job wrote{look.glyphs.ellipsis}")
         return summary_table(self.record, self.summary, look, self.note)
-
-
-class BuildWatch(Widget):
-    """See the module docstring. `action` is the job action it shows results for, `note` a line
-    the result adds under a build that rejected something."""
-
-    DEFAULT_CSS = """
-    BuildWatch {
-        display: none;
-    }
-    """
-
-    def __init__(self, action: str, *, note: str = "") -> None:
-        super().__init__()
-        self.action = action
-        self.note = note
-        self.watched: WeakSet[Screen] = WeakSet()
-        self.shown: WeakSet[Screen] = WeakSet()
-
-    def on_mount(self) -> None:
-        self.app.screen_change_signal.subscribe(self, self.screen_changed)
-
-    def screen_changed(self, screen: Screen) -> None:
-        if screen in self.watched or not isinstance(screen, JobScreen):
-            return
-        self.watched.add(screen)
-        screen.bindings_updated_signal.subscribe(self, self.offer)
-        self.offer(screen)
-
-    def offer(self, screen: Screen) -> None:
-        """Show the result on `screen` if it holds a finished job of this action."""
-        if not isinstance(screen, JobScreen) or screen in self.shown:
-            return
-        record = screen.record
-        if record is None or record.spec.action != self.action or record.state not in FINISHED:
-            return
-        panes = screen.query(RESULT_PANE)
-        if not panes:
-            return
-        self.shown.add(screen)
-        pane = panes.first()
-        for view in pane.query(OutcomeView):
-            view.display = False
-        pane.mount(BuildResult(record, note=self.note))
-        pane.display = True

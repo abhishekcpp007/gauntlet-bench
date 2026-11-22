@@ -8,8 +8,8 @@ from collections.abc import Sequence
 from textual.widget import Widget
 
 from .. import actions
-from ..jobtypes import JobSpec
-from ..widgets.buildresult import BuildWatch
+from ..jobtypes import FINISHED, JobRecord, JobSpec
+from ..widgets.buildresult import BuildResult
 from ..widgets.form import FormView
 from ..widgets.formextras import FormNote
 from .base import (
@@ -113,11 +113,11 @@ class MakeTasks(ActionForm):
         ),
     )
 
+    def outcome(self, record: JobRecord) -> Widget | None:
+        return BuildResult(record, note=RARELY_KEPT) if record.state in FINISHED else None
+
     def extras(self, view: FormView) -> Sequence[tuple[Widget, str | None]]:
-        return (
-            (FormNote(COSTS, id="make-tasks-costs"), None),
-            (BuildWatch(self.action_id, note=RARELY_KEPT), None),
-        )
+        return ((FormNote(COSTS, id="make-tasks-costs"), None),)
 
     def build(self, values: Values) -> JobSpec:
         limit = values.integer("limit")
