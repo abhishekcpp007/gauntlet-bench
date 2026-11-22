@@ -34,9 +34,8 @@ from .make_tasks import SCOPES
 
 FIELDS = ListFields(repo="repo", repo_url="repo_url", last="last", prereleases="prereleases", ranges="ranges")
 ABOUT = (
-    "A release range is all the work between two release tags, say v1.2.0 to v1.3.0. Each one "
-    "becomes a single long task: the agent starts at the first tag and has to reach the second. "
-    "Building needs Docker and the network, and a range can take an hour."
+    "A range is the work between two release tags, say v1.2.0 to v1.3.0. The agent starts at the "
+    "first tag and has to reach the second."
 )
 RARELY_KEPT = (
     "Many ranges don't make a task, and that's normal: a range has to pass the same checks a PR does."
