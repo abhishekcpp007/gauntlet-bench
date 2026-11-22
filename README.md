@@ -1,8 +1,8 @@
 # Gauntlet
 
-[![CI](https://github.com/abhishekcpp007/NEW_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/abhishekcpp007/NEW_REPO/actions/workflows/ci.yml)
-[![Calibrate](https://github.com/abhishekcpp007/NEW_REPO/actions/workflows/calibrate.yml/badge.svg)](https://github.com/abhishekcpp007/NEW_REPO/actions/workflows/calibrate.yml)
-[![Live](https://github.com/abhishekcpp007/NEW_REPO/actions/workflows/live.yml/badge.svg)](https://github.com/abhishekcpp007/NEW_REPO/actions/workflows/live.yml)
+[![CI](https://github.com/abhishekcpp007/gauntlet-bench/actions/workflows/ci.yml/badge.svg)](https://github.com/abhishekcpp007/gauntlet-bench/actions/workflows/ci.yml)
+[![Calibrate](https://github.com/abhishekcpp007/gauntlet-bench/actions/workflows/calibrate.yml/badge.svg)](https://github.com/abhishekcpp007/gauntlet-bench/actions/workflows/calibrate.yml)
+[![Live](https://github.com/abhishekcpp007/gauntlet-bench/actions/workflows/live.yml/badge.svg)](https://github.com/abhishekcpp007/gauntlet-bench/actions/workflows/live.yml)
 
 Gauntlet turns freshly merged GitHub pull requests into coding tasks for AI agents, and it scores every attempt with a grader that's been attacked on purpose. It works on Python repos tested with pytest and on JavaScript or TypeScript repos tested with vitest or jest.
 
@@ -21,7 +21,7 @@ The repo ships 147 tasks from 26 repos. In their calibration runs no cheat resol
 You need Python 3.11 or newer and git. Anything that boots a sandbox also needs Docker.
 
 ```bash
-git clone https://github.com/abhishekcpp007/NEW_REPO gauntlet
+git clone https://github.com/abhishekcpp007/gauntlet-bench gauntlet
 cd gauntlet
 pip install -e ".[claude]"    # or `uv sync`, then prefix commands with `uv run`
 gauntlet --help
@@ -364,7 +364,7 @@ uv run ruff check .
   author = {Abhishek},
   title  = {Gauntlet: leak-free RL environments from fresh GitHub PRs, with a red-teamed grader},
   year   = {2026},
-  url    = {https://github.com/abhishekcpp007/NEW_REPO}
+  url    = {https://github.com/abhishekcpp007/gauntlet-bench}
 }
 ```
 

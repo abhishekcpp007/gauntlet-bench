@@ -25,7 +25,7 @@ tui = ["textual>=8.2"]
 gauntlet = "gauntlet.harness.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/abhishekcpp007/NEW_REPO"
+Homepage = "https://github.com/abhishekcpp007/gauntlet-bench"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6", "anthropic>=2.3", "textual>=8.2", "pytest-asyncio>=1.5"]
