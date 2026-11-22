@@ -16,6 +16,7 @@ from ..models import DataSource
 from ..widgets.chrome import NavBar, TopBar
 from ..widgets.deferred import Deferred
 from ..widgets.filterbar import FilterBar
+from ..widgets.footer import KeyFooter
 
 if TYPE_CHECKING:
     from ..app import GauntletApp
@@ -57,7 +58,7 @@ class GauntletScreen(Screen[None]):
         yield TopBar()
         yield NavBar(self.gauntlet.destinations, self.gauntlet.current_mode)
         yield from self.compose_body()
-        yield Footer()
+        yield KeyFooter()
 
     def compose_body(self) -> ComposeResult:
         yield from ()
