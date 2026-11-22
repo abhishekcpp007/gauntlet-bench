@@ -13,8 +13,8 @@ from textual.widget import Widget
 
 from .. import actions
 from ..actions import ReleaseRange
-from ..jobtypes import FINISHED, JobRecord, JobSpec
-from ..widgets.buildresult import BuildResult
+from ..jobtypes import FINISHED, JobRecord, JobSpec, Output
+from ..widgets.buildresult import BuildResult, built_outputs
 from ..widgets.form import FormView
 from ..widgets.formextras import FormNote
 from ..widgets.rangelister import ListFields, RangeLister
@@ -132,6 +132,9 @@ class MakeLhtTasks(ActionForm):
 
     def outcome(self, record: JobRecord) -> Widget | None:
         return BuildResult(record, note=RARELY_KEPT) if record.state in FINISHED else None
+
+    def openable(self, record: JobRecord) -> tuple[Output, ...]:
+        return built_outputs(record)
 
     def extras(self, view: FormView) -> Sequence[tuple[Widget, str | None]]:
         return (

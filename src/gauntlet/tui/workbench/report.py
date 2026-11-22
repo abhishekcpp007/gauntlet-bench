@@ -50,6 +50,9 @@ class Report(ActionForm):
     def outcome(self, record: JobRecord) -> Widget | None:
         return ReportOutcome(record) if record.state == "succeeded" else None
 
+    def opens(self, record: JobRecord) -> bool:
+        return record.state == "succeeded"
+
     def after(self, job: JobRecord, app: GauntletApp) -> bool:
         app.push_screen(ReportScreen(job.id, job.spec.title))
         return True

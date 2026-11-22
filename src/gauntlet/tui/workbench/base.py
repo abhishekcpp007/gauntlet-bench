@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from ..actions import ACTIONS
-from ..jobtypes import ActionGroup, ActionInfo, JobRecord, JobSpec, Machine, Need
+from ..jobtypes import ActionGroup, ActionInfo, JobRecord, JobSpec, Machine, Need, Output
 from ..models import DataSource
 from ..workspace import Workspace
 
@@ -423,9 +423,19 @@ class ActionForm:
         or made, read in a thread. None, the default, leaves the pane out."""
         return None
 
+    def openable(self, record: JobRecord) -> tuple[Output, ...]:
+        """The outputs of a finished job worth opening: what the Job screen lists under Made. The
+        default is every output; leave out one that came out empty."""
+        return record.spec.outputs
+
+    def opens(self, record: JobRecord) -> bool:
+        """Whether `o` opens anything for this finished job. The default: when something is openable."""
+        return bool(self.openable(record))
+
     def after(self, job: JobRecord, app: GauntletApp) -> bool:
-        """Open what `job` made. Returns False when there's nothing to open."""
-        for output in job.spec.outputs:
+        """What `o` opens. The default opens the first openable output. Returns False when there's
+        nothing to open."""
+        for output in self.openable(job):
             app.open_output(output)
             return True
         return False

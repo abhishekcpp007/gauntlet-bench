@@ -10,6 +10,7 @@ the job reads failed; the result says that's a normal outcome and why it happene
 from __future__ import annotations
 
 from functools import partial
+from pathlib import Path
 
 from rich.console import RenderableType
 from rich.table import Table
@@ -17,13 +18,14 @@ from rich.text import Text
 from textual.worker import Worker, WorkerState
 
 from .. import format as fmt
-from ..jobtypes import JobRecord
+from ..jobtypes import JobRecord, Output
 from ..theme import ERROR, FAILED, PASSED, Look
 from .buildfiles import RANGE_UNIT, BuildSummary, Item, read_build
 from .states import describe_error
 from .themed import Themed
 
 NO_TASKS_EXIT = 1
+ROWS_PEEK_BYTES = 4096
 SHOWN_PER_GROUP = 8
 GROUP_GAP = 1
 RESULT_PANE = "#job-outcome"
@@ -172,3 +174,16 @@ class BuildResult(Themed):
         if self.summary is None:
             return look.muted(f"Reading what the job wrote{look.glyphs.ellipsis}")
         return summary_table(self.record, self.summary, look, self.note)
+
+
+def built_outputs(record: JobRecord) -> tuple[Output, ...]:
+    """A build's outputs, without its task set when it kept no task, so `o` never opens an empty set."""
+    return tuple(o for o in record.spec.outputs if o.kind != "tasks" or has_rows(Path(o.path)))
+
+
+def has_rows(path: Path) -> bool:
+    """Whether a `.jsonl` file is there and holds anything but blank lines. Reads one block."""
+    if not path.is_file():
+        return False
+    with path.open("rb") as handle:
+        return bool(handle.read(ROWS_PEEK_BYTES).strip())

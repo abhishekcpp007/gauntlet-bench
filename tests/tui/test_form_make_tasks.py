@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from rich.console import Console
+from textual.widgets import OptionList
 
 from gauntlet.harness import cli
 from gauntlet.harness.schema import PRInfo, Rejected
@@ -357,3 +358,16 @@ async def test_it_fits_at_80_by_24(tmp_path: Path):
         await pilot.press("escape")
         await settle(app, pilot)
         assert "PR limit" in screen_text(app) or "Repos" in screen_text(app)
+
+
+async def test_a_build_that_kept_nothing_wont_open_an_empty_task_set(tmp_path: Path):
+    app, runner, spec = await run_build(tmp_path, kept=False)
+    async with app.run_test(size=WIDE) as pilot:
+        screen = await finish(app, pilot, runner, spec)
+        assert screen.openable is not None
+        assert [o.kind for o in screen.openable] == ["rejected", "prs"]
+        listed = screen.query_one("#job-outputs").query_one(OptionList)
+        assert listed.option_count == len(screen.openable)
+        await pilot.press("o")
+        await settle(app, pilot)
+        assert not isinstance(app.screen, DatasetScreen)

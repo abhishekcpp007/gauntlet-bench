@@ -44,6 +44,7 @@ from ..widgets.jobstatus import (
 from ..widgets.outcome import OutcomeView
 from ..widgets.states import ErrorState, describe_error
 from ..widgets.themed import Themed
+from ..workbench.base import ActionForm
 from .base import GauntletScreen
 from .confirm import ConfirmPrompt
 
@@ -199,6 +200,8 @@ class JobScreen(GauntletScreen):
         self.loaded = False
         self.buffered: list[JobEvent] = []
         self.outcome_shown = False
+        self.openable: tuple[Output, ...] | None = None
+        self.opens = False
         self._ticker: Timer | None = None
 
     def compose_body(self) -> ComposeResult:
@@ -304,10 +307,12 @@ class JobScreen(GauntletScreen):
             self.show_outcome(record)
         outputs = self.query_one(Outputs)
         pane = self.query_one("#job-outputs")
-        if finished and record.spec.outputs and not pane.display:
-            outputs.set_options(
-                [Option(output_line(o), id=str(i)) for i, o in enumerate(record.spec.outputs)]
-            )
+        if finished and self.openable is None:
+            form = self.form_for(record)
+            self.openable = form.openable(record) if form else record.spec.outputs
+            self.opens = form.opens(record) if form else bool(self.openable)
+        if finished and self.openable and not pane.display:
+            outputs.set_options([Option(output_line(o), id=str(i)) for i, o in enumerate(self.openable)])
             pane.display = True
         if self._ticker is not None:
             if record.state == "running":
@@ -319,8 +324,8 @@ class JobScreen(GauntletScreen):
 
     def show_outcome(self, record: JobRecord) -> None:
         """Put what the job's form says about how it ended in the Result pane, if it says anything."""
-        form = self.gauntlet.forms.get(record.spec.action)
-        widget = form().outcome(record) if form is not None else None
+        form = self.form_for(record)
+        widget = form.outcome(record) if form is not None else None
         if widget is not None:
             pane = self.query_one("#job-outcome")
             pane.mount(widget)
@@ -354,7 +359,7 @@ class JobScreen(GauntletScreen):
         if action == "cancel_job":
             return record is not None and record.state in ACTIVE
         if action == "open_output":
-            return record is not None and record.state in FINISHED and bool(record.spec.outputs)
+            return record is not None and record.state in FINISHED and self.opens
         if action == "filter":
             return self.loaded
         if action == "facets":
@@ -399,23 +404,28 @@ class JobScreen(GauntletScreen):
                     self.notify, f"Couldn't cancel: {error}", severity="warning", markup=False
                 )
 
+    def form_for(self, record: JobRecord) -> ActionForm | None:
+        form = self.gauntlet.forms.get(record.spec.action)
+        return form() if form is not None else None
+
     def action_open_output(self) -> None:
         record = self.record
-        if record is None or not record.spec.outputs:
+        if record is None or not self.opens:
             return
         outputs = self.query_one(Outputs)
-        if outputs.has_focus and outputs.highlighted is not None:
-            self.gauntlet.open_output(record.spec.outputs[outputs.highlighted])
+        if outputs.has_focus and outputs.highlighted is not None and self.openable:
+            self.gauntlet.open_output(self.openable[outputs.highlighted])
             return
-        form = self.gauntlet.forms.get(record.spec.action)
-        if record.state == "succeeded" and form is not None and form().after(record, self.gauntlet):
+        form = self.form_for(record)
+        if form is not None and record.state == "succeeded" and form.after(record, self.gauntlet):
             return
-        self.gauntlet.open_output(record.spec.outputs[0])
+        if self.openable:
+            self.gauntlet.open_output(self.openable[0])
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         if self.record is not None and event.option.id is not None:
             event.stop()
-            self.gauntlet.open_output(self.record.spec.outputs[int(event.option.id)])
+            self.gauntlet.open_output((self.openable or ())[int(event.option.id)])
 
 
 @dataclass(frozen=True, slots=True)
