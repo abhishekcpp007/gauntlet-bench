@@ -489,7 +489,10 @@ class GauntletApp(App[None]):
         if output.kind == "run":
             for run in self.source.runs():
                 if run.path is not None and Path(run.path).resolve() == wanted:
-                    self.call_from_thread(self.open_run, run.id)
+                    if output.episode_id is not None:
+                        self.call_from_thread(self.open_episode, run.id, output.episode_id)
+                    else:
+                        self.call_from_thread(self.open_run, run.id)
                     return
         else:
             for dataset in self.source.datasets():

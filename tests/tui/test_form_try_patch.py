@@ -6,7 +6,6 @@ from gauntlet.tui.app import GauntletApp
 from gauntlet.tui.screens.confirm import ConfirmJob
 from gauntlet.tui.screens.episode import EpisodeScreen
 from gauntlet.tui.screens.job import JobScreen
-from gauntlet.tui.store import WORKSPACE_PREFIX
 from gauntlet.tui.widgets.form import FormView
 from gauntlet.tui.widgets.jobstatus import command_line
 from gauntlet.tui.widgets.pickers import Picker
@@ -142,11 +141,13 @@ def try_spec(tmp_path: Path):
     return source, actions.try_patch(workspace, tasks, TOMLI, a_patch(tmp_path), name=RUN_NAME)
 
 
-async def test_after_it_succeeds_o_opens_the_episode(tmp_path: Path):
+async def test_a_run_that_isnt_loaded_yet_is_never_guessed_from_its_name(tmp_path: Path, monkeypatch):
     source, spec = try_spec(tmp_path)
     runner = FakeJobRunner()
     runner.script("try_patch", [SOLVED])
     app = GauntletApp(source, jobs=runner)
+    said: list[str] = []
+    monkeypatch.setattr(app, "notify", lambda message, **_: said.append(message))
     async with app.run_test(size=WIDE) as pilot:
         record = runner.submit(spec)
         runner.run_until_idle()
@@ -155,9 +156,8 @@ async def test_after_it_succeeds_o_opens_the_episode(tmp_path: Path):
         assert "✓ succeeded" in text and "Open" in text.splitlines()[-1]
         await pilot.press("o")
         await settle(app, pilot)
-        assert isinstance(app.screen, EpisodeScreen)
-        assert app.screen.run_id == f"{WORKSPACE_PREFIX}{RUN_NAME}"
-        assert app.screen.episode_id == spec.outputs[0].episode_id
+        assert not isinstance(app.screen, EpisodeScreen)
+        assert said and "isn't loaded yet" in said[-1]
 
 
 async def test_a_loaded_run_is_found_by_its_folder(tmp_path: Path, monkeypatch):
