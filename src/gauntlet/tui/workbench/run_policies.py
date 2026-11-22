@@ -19,7 +19,6 @@ from .base import (
 )
 from .calibrate import policy_choices
 
-RUN_DEFAULT = ("oracle", "noop", "cheater")
 LIMITS = "Limits"
 CATEGORY_NAMES = {"swe": "swe, single-PR tasks", "lht": "lht, long release-range tasks"}
 
@@ -34,7 +33,7 @@ class RunPolicies(ActionForm):
             label="Scripted policies",
             hint="Starts on gauntlet run's own default. Each one plays every task.",
             options=policy_choices,
-            default=RUN_DEFAULT,
+            default=actions.RUN_POLICIES,
             required=False,
         ),
         TextField(

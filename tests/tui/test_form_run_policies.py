@@ -6,7 +6,7 @@ from gauntlet.tui.screens.confirm import ConfirmJob
 from gauntlet.tui.widgets.form import FormView, GroupHeading
 from gauntlet.tui.widgets.jobstatus import command_line
 from gauntlet.tui.workbench import forms
-from gauntlet.tui.workbench.run_policies import RUN_DEFAULT, RunPolicies
+from gauntlet.tui.workbench.run_policies import RunPolicies
 from gauntlet.tui.workspace import Workspace
 
 from .factories import LIVE, make_source, screen_text
@@ -35,7 +35,7 @@ async def mounted(app, pilot) -> FormView:
 
 def test_the_default_policies_are_the_harness_defaults(parse):  # noqa: F811  # the imported fixture
     assert forms()["run_policies"] is RunPolicies
-    assert tuple(parse(["run", "--tasks", "x"]).policies.split(",")) == RUN_DEFAULT
+    assert tuple(parse(["run", "--tasks", "x"]).policies.split(",")) == actions.RUN_POLICIES
 
 
 async def test_the_defaults_build_the_harness_defaults(tmp_path: Path, parse):  # noqa: F811
@@ -43,7 +43,7 @@ async def test_the_defaults_build_the_harness_defaults(tmp_path: Path, parse):  
     app = form_app(RunPolicies(), source, workspace=tmp_path)
     async with app.run_test(size=WIDE) as pilot:
         view = await mounted(app, pilot)
-        assert tuple(view.row("policies").control.selected) == RUN_DEFAULT
+        assert tuple(view.row("policies").control.selected) == actions.RUN_POLICIES
         fill(view, tasks=LIVE)
         spec = view.review()
         assert spec is not None
@@ -189,7 +189,7 @@ async def test_no_docker_blocks_it(tmp_path: Path):
 
 async def finished(tmp_path: Path, lines: list[str], exit_code: int) -> tuple[str, str]:
     _, tasks = source_with_files(tmp_path)
-    spec = actions.run_policies(Workspace(tmp_path), tasks, RUN_DEFAULT)
+    spec = actions.run_policies(Workspace(tmp_path), tasks, actions.RUN_POLICIES)
     runner = FakeJobRunner()
     runner.script("run_policies", lines, exit_code=exit_code)
     app = GauntletApp(make_source(), jobs=runner)

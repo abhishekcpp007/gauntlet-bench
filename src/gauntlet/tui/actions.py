@@ -17,17 +17,21 @@ check found, from its log.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
 import tempfile
+import threading
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 
 from gauntlet.cheatcatcher.cli import EXIT_CODES as SCAN_EXIT_CODES
 from gauntlet.cheatcatcher.models import Report as ScanReport
+from gauntlet.harness import cli as harness_cli
 from gauntlet.harness.budget import parse_prices
 from gauntlet.harness.cli import CALIBRATION_POLICIES
 from gauntlet.harness.policies import PATCH_PREFIX, ClaudePolicy, make_policy
@@ -88,6 +92,51 @@ FOUND_A_PROBLEM = 1
 FINDING_MARKERS: dict[str, str] = {"leakcheck": "LEAK ", "check_envs": "DRIFT ", "calibrate": "VIOLATION "}
 """The checks that exit 1 when they find a problem, and how each marks a problem in its output.
 A crash exits 1 too, so a problem is only counted where its marker line is printed."""
+
+
+class _Parsed(Exception):
+    """Carries what a command line parsed to out of `cli.main`."""
+
+    def __init__(self, namespace: argparse.Namespace) -> None:
+        super().__init__()
+        self.namespace = namespace
+
+
+class _StopAfterParsing(argparse.ArgumentParser):
+    """A parser that hands back what it parsed instead of letting `cli.main` run the command."""
+
+    def parse_known_args(  # type: ignore[override]  # it raises instead of returning
+        self, args: Sequence[str] | None = None, namespace: argparse.Namespace | None = None
+    ) -> tuple[argparse.Namespace, list[str]]:
+        parsed, _rest = super().parse_known_args(args, namespace)
+        raise _Parsed(parsed)
+
+
+_PARSING = threading.Lock()
+
+
+def harness_parse(*argv: str) -> argparse.Namespace:
+    """What `gauntlet <argv...>` parses to, defaults and all, by the harness's own parser.
+
+    `cli.main` builds its parser on every call, so this runs it with argparse's parser swapped for
+    one that stops right after parsing: no command runs and nothing is written.
+    """
+    shim = SimpleNamespace(**vars(argparse))
+    shim.ArgumentParser = _StopAfterParsing
+    with _PARSING:
+        real = harness_cli.argparse
+        harness_cli.argparse = shim  # type: ignore[assignment]  # only for this one call
+        try:
+            harness_cli.main(list(argv))
+        except _Parsed as parsed:
+            return parsed.namespace
+        finally:
+            harness_cli.argparse = real
+    raise ActionError(f"gauntlet {' '.join(argv)} didn't parse")
+
+
+RUN_POLICIES: tuple[str, ...] = tuple(harness_parse("run", "--tasks", os.devnull).policies.split(","))
+"""The policies `gauntlet run` plays when it isn't given `--policies`."""
 
 
 class ActionError(ValueError):

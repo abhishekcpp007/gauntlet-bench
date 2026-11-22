@@ -418,3 +418,19 @@ def test_report(ws, parse):
     assert plain.html is None and plain.cutoff is None
     dotted = parse(actions.report(ws, RESULTS, html=True, name="v1.2").steps[0].argv)
     assert dotted.html.endswith("v1.2.html")
+
+
+def test_runs_default_policies_come_from_its_own_parser(parse, monkeypatch):
+    assert actions.RUN_POLICIES == tuple(parse(["run", "--tasks", "x"]).policies.split(","))
+
+
+def test_reading_the_parser_runs_no_command_and_puts_argparse_back(monkeypatch):
+    import argparse as real_argparse
+
+    def must_not_run(_args):
+        raise AssertionError("a command ran")
+
+    monkeypatch.setattr(cli, "cmd_run", must_not_run)
+    parsed = actions.harness_parse("run", "--tasks", "x", "--attempts", "3")
+    assert parsed.attempts == 3 and parsed.tasks == "x"
+    assert cli.argparse is real_argparse
