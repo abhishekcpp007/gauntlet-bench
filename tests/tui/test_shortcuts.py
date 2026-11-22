@@ -4,7 +4,7 @@ from gauntlet.tui.app import GauntletApp
 from gauntlet.tui.jobtypes import JobSpec
 from gauntlet.tui.screens.dataset import DatasetScreen
 from gauntlet.tui.screens.episode import EpisodeScreen
-from gauntlet.tui.screens.help import HelpScreen
+from gauntlet.tui.screens.help import HelpScreen, per_row
 from gauntlet.tui.screens.run import RunScreen
 from gauntlet.tui.screens.runs import RunsScreen
 from gauntlet.tui.screens.task import TaskScreen
@@ -297,3 +297,9 @@ async def test_help_on_the_workbench_lists_every_pane_under_its_name():
         assert {"Review", "Choose"} <= groups["Form"]
         assert "Recheck machine" in groups["Workbench"]
         assert list(groups)[-1] == "Everywhere"
+
+
+def test_help_puts_fewer_groups_side_by_side_on_a_narrow_terminal():
+    wide, narrow, tiny = (per_row(width, len(ALL_KEYS)) for width in (WIDE[0], SMALL[0], len(ALL_KEYS)))
+    assert wide > narrow > tiny == 1
+    assert per_row(WIDE[0], 1) == 1
