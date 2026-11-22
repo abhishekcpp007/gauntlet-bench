@@ -14,6 +14,7 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
+from .. import format as fmt
 from ..actions import ACTIONS
 from ..jobtypes import ActionGroup, ActionInfo, JobRecord, JobSpec, Machine, Need, Output
 from ..models import DataSource
@@ -195,6 +196,32 @@ class MultiChoiceField(Field):
         return raw or None
 
 
+def task_sets(source: DataSource) -> tuple[Choice, ...]:
+    """Every loaded task set as a choice: its id, its size, and its `tasks.jsonl`."""
+    return tuple(Choice(d.id, d.id, fmt.plural(d.tasks, "task"), d.tasks_file) for d in source.datasets())
+
+
+@dataclass(frozen=True, kw_only=True)
+class TaskSetsField(MultiChoiceField):
+    """Any number of task sets, none picked to start with. The value is a tuple of `Choice`s:
+    `values.items` gives their ids and `values.paths` their `tasks.jsonl` files. A task set the
+    form is opened with starts picked."""
+
+    options: ChoiceSource | None = task_sets
+    default: tuple[str, ...] | None = ()
+
+    def check(self, raw: object) -> object:
+        picked = tuple(c for c in raw if isinstance(c, Choice)) if isinstance(raw, tuple) else ()
+        if not picked:
+            if self.required:
+                raise FieldError(f"Pick at least one of {self.label.lower()}.")
+            return None
+        missing = [c.value for c in picked if c.path is None]
+        if missing:
+            raise FieldError(f"{', '.join(missing)} has no task file to read.")
+        return picked
+
+
 @dataclass(frozen=True, kw_only=True)
 class PathField(Field):
     """A file or folder. With `must_exist` it has to be there already; otherwise it may be new, but
@@ -251,8 +278,8 @@ class RunField(Field):
         return raw
 
 
-PREFILL_KINDS: dict[str, type[Field]] = {
-    "task_set": TaskSetField,
+PREFILL_KINDS: dict[str, type[Field] | tuple[type[Field], ...]] = {
+    "task_set": (TaskSetField, TaskSetsField),
     "task": TaskField,
     "run": RunField,
     "patch": PathField,
@@ -339,7 +366,15 @@ class Values:
         value = self.data.get(name)
         if value is None:
             return ()
-        return tuple(str(v) for v in value) if isinstance(value, tuple) else (str(value),)
+        if not isinstance(value, tuple):
+            value = (value,)
+        return tuple(v.value if isinstance(v, Choice) else str(v) for v in value)
+
+    def paths(self, name: str) -> tuple[Path, ...]:
+        """The files of the task sets or runs a multi-pick field holds."""
+        value = self.data.get(name)
+        picked = value if isinstance(value, tuple) else ()
+        return tuple(Path(v.path) for v in picked if isinstance(v, Choice) and v.path is not None)
 
     def integer(self, name: str) -> int | None:
         value = self.data.get(name)

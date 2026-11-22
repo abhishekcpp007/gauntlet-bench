@@ -10,7 +10,8 @@ from gauntlet.tui.screens.confirm import ConfirmJob
 from gauntlet.tui.widgets.form import NO_WORKSPACE, FormView
 from gauntlet.tui.widgets.jobstatus import command_line
 from gauntlet.tui.workbench import forms
-from gauntlet.tui.workbench.check_envs import CheckEnvs, task_file_choices
+from gauntlet.tui.workbench.base import task_sets
+from gauntlet.tui.workbench.check_envs import CheckEnvs
 
 from .factories import LHT, LIVE, make_source, screen_text
 from .fakejobs import FakeJobRunner, fill, form_app, row_errors
@@ -46,12 +47,12 @@ async def mounted(app, pilot) -> FormView:
     return app.query_one(FormView)
 
 
-def test_it_is_found_and_lists_only_sets_with_a_file():
+def test_it_is_found_and_lists_every_set_with_its_file():
     assert forms()["check_envs"] is CheckEnvs
     source = make_source()
-    choices = task_file_choices(source)
-    assert [c.value for c in choices] == [d.tasks_file for d in source.datasets() if d.tasks_file]
-    assert all("task" in c.label for c in choices)
+    choices = task_sets(source)
+    assert [(c.value, c.path) for c in choices] == [(d.id, d.tasks_file) for d in source.datasets()]
+    assert all("task" in c.detail for c in choices)
 
 
 async def test_nothing_is_picked_until_you_pick_and_one_is_needed(tmp_path: Path):
@@ -70,7 +71,7 @@ async def test_it_builds_the_engines_command_for_several_sets(tmp_path: Path):
     app = form_app(CheckEnvs(), source, workspace=tmp_path)
     async with app.run_test(size=WIDE) as pilot:
         view = await mounted(app, pilot)
-        fill(view, tasks=(files[LIVE], files[LHT]))
+        fill(view, tasks=(LIVE, LHT))
         spec = view.review()
         assert spec == actions.check_envs([files[LIVE], files[LHT]])
         assert spec.steps[0].argv[:2] == ("check-envs", "--tasks")
@@ -95,7 +96,7 @@ async def test_the_confirm_step_shows_the_builders_command(tmp_path: Path):
         screen = await open_workbench(app, pilot)
         await pick(screen, pilot, "check_envs")
         view = screen.forms["check_envs"]
-        fill(view, tasks=(files[LIVE],))
+        fill(view, tasks=(LIVE,))
         view.review()
         await pilot.pause()
         assert isinstance(app.screen, ConfirmJob)
@@ -106,7 +107,6 @@ async def test_the_confirm_step_shows_the_builders_command(tmp_path: Path):
 
 async def test_it_wont_start_before_the_machine_is_known(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     source = two_files(tmp_path)
-    files = {d.id: d.tasks_file for d in source.datasets()}
     runner = FakeJobRunner()
 
     def broken():
@@ -118,7 +118,7 @@ async def test_it_wont_start_before_the_machine_is_known(tmp_path: Path, monkeyp
         screen = await open_workbench(app, pilot)
         await pick(screen, pilot, "check_envs")
         view = screen.forms["check_envs"]
-        fill(view, tasks=(files[LIVE],))
+        fill(view, tasks=(LIVE,))
         view.review()
         await settle(app, pilot)
         assert not isinstance(app.screen, ConfirmJob)
@@ -167,3 +167,15 @@ async def test_fits_at_80_by_24(tmp_path: Path):
         assert screen.forms["check_envs"].has_class("-stacked")
         text = screen_text(app)
         assert "Task sets" in text and "Quit" in text.splitlines()[-1]
+
+
+async def test_opening_it_on_a_task_set_picks_that_set(tmp_path: Path):
+    source = two_files(tmp_path)
+    app = form_app(CheckEnvs(), source, workspace=tmp_path)
+    async with app.run_test(size=WIDE) as pilot:
+        view = await mounted(app, pilot)
+        view.prefill({"task_set": LHT})
+        await pilot.pause()
+        assert view.row("tasks").control.selected == [LHT]
+        files = {d.id: d.tasks_file for d in source.datasets()}
+        assert view.review() == actions.check_envs([files[LHT]])

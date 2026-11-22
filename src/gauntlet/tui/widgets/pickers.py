@@ -26,7 +26,7 @@ from textual.worker import Worker, WorkerState
 from .. import format as fmt
 from ..models import DataSource
 from ..theme import look_for
-from ..workbench.base import Choice, PathKind
+from ..workbench.base import Choice, PathKind, task_sets
 from .states import Loading, describe_error
 from .themed import Themed
 
@@ -36,7 +36,7 @@ SUMMARY_ONLY = "summary only, no report"
 
 
 def task_set_choices(source: DataSource) -> tuple[Choice, ...]:
-    return tuple(Choice(d.id, d.id, fmt.plural(d.tasks, "task"), d.tasks_file) for d in source.datasets())
+    return task_sets(source)
 
 
 def task_choices(source: DataSource, task_set: str | None = None) -> tuple[Choice, ...]:

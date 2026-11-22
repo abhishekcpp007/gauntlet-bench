@@ -42,6 +42,7 @@ from ..workbench.base import (
     SwitchField,
     TaskField,
     TaskSetField,
+    TaskSetsField,
     Values,
     place_prefill,
 )
@@ -245,6 +246,8 @@ class FieldRow(Vertical):
         self.control = control
         self.note = FieldNote(field.hint)
         self.checked = False
+        self.choices: tuple[Choice, ...] | None = None
+        self.picks: set[str] = set()
 
     def compose(self) -> ComposeResult:
         with Horizontal(classes="field-line"):
@@ -281,8 +284,9 @@ class FieldRow(Vertical):
     def set_choices(self, choices: tuple[Choice, ...]) -> None:
         control = self.control
         field = self.field
+        self.choices = choices
         if isinstance(control, SelectionList) and isinstance(field, MultiChoiceField):
-            chosen = set(field.default) if field.default is not None else None
+            chosen = set(field.default) | self.picks if field.default is not None else None
             control.clear_options()
             control.add_options(
                 [Selection(c.label, c.value, chosen is None or c.value in chosen) for c in choices]
@@ -294,7 +298,16 @@ class FieldRow(Vertical):
 
     @property
     def raw(self) -> object:
-        return raw_value(self.control)
+        raw = raw_value(self.control)
+        if isinstance(self.field, TaskSetsField) and isinstance(raw, tuple):
+            return tuple(c for c in self.choices or () if c.value in raw)
+        return raw
+
+    def pick(self, value: str) -> None:
+        """Pick `value` in a multi-pick field, now if its choices are loaded, else once they are."""
+        self.picks.add(value)
+        if isinstance(self.control, SelectionList) and self.choices is not None:
+            self.control.select(value)
 
     def focus_control(self) -> None:
         target = self.control.input if isinstance(self.control, PathPicker) else self.control
@@ -543,6 +556,9 @@ class FormView(VerticalScroll):
         names, then focus the first field still empty. A path goes in at once. A picker looks its
         choice up in a thread, and a value it can't find is left out, like a key with no field."""
         placed = place_prefill(self.form.fields, values)
+        for field, value in placed.values():
+            if isinstance(field, TaskSetsField):
+                self.row(field.name).pick(value)
         for field, value in placed.values():
             control = self.row(field.name).control
             if isinstance(control, PathPicker):
