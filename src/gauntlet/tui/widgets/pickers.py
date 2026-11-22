@@ -32,6 +32,7 @@ from .themed import Themed
 
 Fetch = Callable[[], Sequence[Choice]]
 DETAIL_GAP = 2
+SUMMARY_ONLY = "summary only, no report"
 
 
 def task_set_choices(source: DataSource) -> tuple[Choice, ...]:
@@ -43,7 +44,15 @@ def task_choices(source: DataSource, task_set: str | None = None) -> tuple[Choic
 
 
 def run_choices(source: DataSource) -> tuple[Choice, ...]:
-    return tuple(Choice(r.id, r.id, fmt.plural(r.episodes, "episode"), r.results_file) for r in source.runs())
+    """Every run, with its size. A run with no results file says so before you pick it."""
+    return tuple(
+        Choice(r.id, r.id, run_detail(r.episodes, r.results_file), r.results_file) for r in source.runs()
+    )
+
+
+def run_detail(episodes: int, results_file: str | None) -> str:
+    size = fmt.plural(episodes, "episode")
+    return size if results_file is not None else f"{size}, {SUMMARY_ONLY}"
 
 
 def choice_line(choice: Choice, look_muted: Callable[[str], Text]) -> Text:

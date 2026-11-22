@@ -125,3 +125,11 @@ async def test_esc_leaves_the_path_alone(tmp_path: Path):
         await pilot.press("backspace", "escape")
         await pilot.pause()
         assert picker.value == str(tmp_path)
+
+
+def test_a_summary_only_run_is_marked_before_you_pick_it():
+    from .factories import SHIPPED_LIVE
+
+    details = {c.value: c.detail for c in run_choices(make_source())}
+    assert details[SHIPPED_LIVE].endswith("summary only, no report")
+    assert details[GOLDEN].endswith("episodes") and "summary" not in details[GOLDEN]
