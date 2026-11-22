@@ -9,10 +9,9 @@ from textual.widget import Widget
 
 from .. import actions
 from ..jobtypes import JobSpec
-from ..models import DataSource
 from ..widgets.buildresult import BuildWatch
 from ..widgets.form import FormView
-from ..widgets.formextras import FormNote, mount_from_loader
+from ..widgets.formextras import FormNote
 from .base import (
     ActionForm,
     Choice,
@@ -51,19 +50,6 @@ COSTS = (
 )
 
 
-def extras(_view: FormView) -> Sequence[tuple[Widget, str | None]]:
-    return (
-        (FormNote(COSTS, id="make-tasks-costs"), None),
-        (BuildWatch("make_tasks", note=RARELY_KEPT), None),
-    )
-
-
-def scope_choices(_source: DataSource) -> tuple[Choice, ...]:
-    """The two scopes. Loading them also adds the note on costs and the result watch."""
-    mount_from_loader(extras)
-    return SCOPES
-
-
 @register
 class MakeTasks(ActionForm):
     action_id = "make_tasks"
@@ -95,7 +81,6 @@ class MakeTasks(ActionForm):
             label="Test scope",
             hint="Which tests grade the task. Full runs the whole suite, changed only the PR's test files.",
             choices=SCOPES,
-            options=scope_choices,
             default=actions.SCOPE,
         ),
         IntegerField(
@@ -127,6 +112,12 @@ class MakeTasks(ActionForm):
             required=False,
         ),
     )
+
+    def extras(self, view: FormView) -> Sequence[tuple[Widget, str | None]]:
+        return (
+            (FormNote(COSTS, id="make-tasks-costs"), None),
+            (BuildWatch(self.action_id, note=RARELY_KEPT), None),
+        )
 
     def build(self, values: Values) -> JobSpec:
         limit = values.integer("limit")

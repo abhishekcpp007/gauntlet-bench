@@ -14,14 +14,12 @@ from textual.widget import Widget
 from .. import actions
 from ..actions import ReleaseRange
 from ..jobtypes import JobSpec
-from ..models import DataSource
 from ..widgets.buildresult import BuildWatch
 from ..widgets.form import FormView
-from ..widgets.formextras import FormNote, mount_from_loader
+from ..widgets.formextras import FormNote
 from ..widgets.rangelister import ListFields, RangeLister
 from .base import (
     ActionForm,
-    Choice,
     ChoiceField,
     FieldError,
     IntegerField,
@@ -43,23 +41,6 @@ ABOUT = (
 RARELY_KEPT = (
     "Many ranges don't make a task, and that's normal: a range has to pass the same checks a PR does."
 )
-
-
-def extras(view: FormView) -> Sequence[tuple[Widget, str | None]]:
-    form = view.form
-    if not isinstance(form, MakeLhtTasks):
-        return ()
-    return (
-        (FormNote(ABOUT, id="lht-about"), None),
-        (BuildWatch(form.action_id, note=RARELY_KEPT), None),
-        (RangeLister(view, FIELDS, form.remember), FIELDS.prereleases),
-    )
-
-
-def listed_ranges(_source: DataSource) -> tuple[Choice, ...]:
-    """Nothing until a listing ends. Loading it adds the lister, the note and the result watch."""
-    mount_from_loader(extras)
-    return ()
 
 
 @register
@@ -98,7 +79,6 @@ class MakeLhtTasks(ActionForm):
             name=FIELDS.ranges,
             label="Ranges",
             hint="The ranges to build, once they're listed. Each one you pick becomes one long task.",
-            options=listed_ranges,
             default=(),
             required=False,
         ),
@@ -149,6 +129,13 @@ class MakeLhtTasks(ActionForm):
 
     def __init__(self) -> None:
         self.listed: tuple[str, str | None, tuple[ReleaseRange, ...]] | None = None
+
+    def extras(self, view: FormView) -> Sequence[tuple[Widget, str | None]]:
+        return (
+            (FormNote(ABOUT, id="lht-about"), None),
+            (BuildWatch(self.action_id, note=RARELY_KEPT), None),
+            (RangeLister(view, FIELDS, self.remember), FIELDS.prereleases),
+        )
 
     def remember(self, repo: str, url: str | None, ranges: tuple[ReleaseRange, ...]) -> None:
         self.listed = (repo, url, ranges)

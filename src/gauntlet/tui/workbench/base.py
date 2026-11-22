@@ -20,7 +20,10 @@ from ..models import DataSource
 from ..workspace import Workspace
 
 if TYPE_CHECKING:
+    from textual.widget import Widget
+
     from ..app import GauntletApp
+    from ..widgets.form import FormView
 
 PathKind = Literal["file", "folder"]
 
@@ -409,6 +412,11 @@ class ActionForm:
         """The job these values make, from the builder in `gauntlet.tui.actions`. An
         `ActionError` (any `ValueError`) refuses with its message."""
         raise NotImplementedError
+
+    def extras(self, view: FormView) -> Sequence[tuple[Widget, str | None]]:
+        """Widgets of the form's own to add to its view, each with the name of the field it goes
+        after, or None to go above the fields. The default adds none."""
+        return ()
 
     def after(self, job: JobRecord, app: GauntletApp) -> bool:
         """Open what `job` made. Returns False when there's nothing to open."""

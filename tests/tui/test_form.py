@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from textual.widgets import Input, SelectionList, Switch
+from textual.widgets import Input, SelectionList, Static, Switch
 
 from gauntlet.tui.actions import ActionError
 from gauntlet.tui.jobtypes import JobSpec, Step
@@ -27,7 +27,7 @@ from gauntlet.tui.workbench.base import (
 )
 from gauntlet.tui.workspace import Workspace
 
-from .factories import LIVE, screen_text
+from .factories import LIVE, make_source, screen_text
 from .fakejobs import fill, form_app, row_errors
 
 SIZE = (120, 40)
@@ -303,3 +303,34 @@ async def test_choices_from_the_data_load_in_a_thread():
         control = app.query_one(FormView).row("policies").control
         assert isinstance(control, SelectionList)
         assert "oracle" in control.selected and len(control.selected) == control.option_count > 1
+
+
+class WithExtras(ActionForm):
+    action_id = "with-extras"
+    fields = (TextField(name="first", label="First"), TextField(name="second", label="Second"))
+
+    def extras(self, view: FormView):
+        return (
+            (Static("above the fields", id="top-note"), None),
+            (Static("between", id="mid-note"), "first"),
+        )
+
+
+async def test_a_form_adds_its_own_widgets_where_it_says():
+    app = form_app(WithExtras())
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.pause()
+        view = app.query_one(FormView)
+        order = [child.id for child in view.children]
+        assert order.index("top-note") < order.index("field-first") < order.index("mid-note")
+        assert order.index("mid-note") < order.index("field-second")
+
+
+def test_extras_after_a_field_the_form_doesnt_have_is_a_mistake():
+    class Wrong(WithExtras):
+        def extras(self, view: FormView):
+            return ((Static("lost"), "missing"),)
+
+    view = FormView(Wrong(), source=make_source)
+    with pytest.raises(ValueError, match="missing"):
+        list(view.compose())

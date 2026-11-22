@@ -21,6 +21,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import DescendantBlur, Resize
 from textual.message import Message
+from textual.widget import Widget
 from textual.widgets import Button, Input, Select, SelectionList, Static, Switch
 from textual.widgets.selection_list import Selection
 from textual.worker import Worker, WorkerState
@@ -405,7 +406,16 @@ class FormView(VerticalScroll):
         yield Static(self.info.description if self.info else "", classes="form-intro", markup=False)
         yield FormBanner()
         self.rows = [FieldRow(field, make_control(field, self.source)) for field in self.form.fields]
-        yield from self.rows
+        extras: dict[str | None, list[Widget]] = {}
+        for widget, after in self.form.extras(self):
+            extras.setdefault(after, []).append(widget)
+        yield from extras.pop(None, [])
+        for row in self.rows:
+            yield row
+            yield from extras.pop(row.field.name, [])
+        if extras:
+            names = ", ".join(sorted(str(name) for name in extras))
+            raise ValueError(f"{self.form.action_id} puts widgets after fields it doesn't have: {names}")
         with Horizontal(classes="form-actions"):
             yield ReviewButton("Review", variant="primary", compact=True)
             yield Static("ctrl+r", classes="form-keys", markup=False)
