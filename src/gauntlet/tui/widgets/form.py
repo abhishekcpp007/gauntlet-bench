@@ -10,7 +10,7 @@ with the spec; the screen opens the confirm step from there.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from functools import partial
 from typing import cast
 
@@ -42,6 +42,7 @@ from ..workbench.base import (
     TaskField,
     TaskSetField,
     Values,
+    place_prefill,
 )
 from ..workspace import Workspace
 from .pickers import PathPicker, Picker, run_choices, task_choices, task_set_choices
@@ -50,6 +51,7 @@ from .themed import Themed
 
 Control = Input | Select[str] | Switch | SelectionList[str] | PathPicker | Picker
 OPTIONS_GROUP = "options"
+PREFILL_GROUP = "prefill"
 STACK_BELOW = 72
 NO_WORKSPACE = "The workspace isn't ready yet. It's known once the machine check finishes."
 
@@ -397,6 +399,7 @@ class FormView(VerticalScroll):
         self.workspace = workspace
         self.blocked: str | None = None
         self.rows: list[FieldRow] = []
+        self.linked: dict[str, str | None] = {}
 
     def compose(self) -> ComposeResult:
         yield Static(self.info.description if self.info else "", classes="form-intro", markup=False)
@@ -488,7 +491,13 @@ class FormView(VerticalScroll):
         rows = [row for row in self.rows if row.control is event.picker]
         if not rows or not isinstance(rows[0].field, TaskSetField):
             return
-        name, task_set = rows[0].field.name, event.value
+        name = rows[0].field.name
+        if name not in self.linked or self.linked[name] != event.value:
+            self.link_tasks(name, event.value)
+
+    def link_tasks(self, name: str, task_set: str | None) -> None:
+        """Point every task field that lists from the task set field `name` at `task_set`."""
+        self.linked[name] = task_set
         for row in self.rows:
             field = row.field
             if isinstance(field, TaskField) and field.task_set == name and isinstance(row.control, Picker):
@@ -496,3 +505,83 @@ class FormView(VerticalScroll):
                     partial(self.tasks_in, task_set),
                     prompt="pick a task" if task_set else "pick a task set first",
                 )
+
+    def prefill(self, values: Mapping[str, str]) -> None:
+        """Fill fields by what the values mean (`task_set`, `task`, `run`, `patch`), not by their
+        names, then focus the first field still empty. A path goes in at once. A picker looks its
+        choice up in a thread, and a value it can't find is left out, like a key with no field."""
+        placed = place_prefill(self.form.fields, values)
+        for field, value in placed.values():
+            control = self.row(field.name).control
+            if isinstance(control, PathPicker):
+                control.input.value = value
+        if any(isinstance(field, TaskSetField | TaskField | RunField) for field, _ in placed.values()):
+            self.run_worker(
+                partial(self.find_choices, placed),
+                thread=True,
+                group=PREFILL_GROUP,
+                exclusive=True,
+                exit_on_error=False,
+            )
+        else:
+            self.focus_empty()
+
+    def find_choices(self, placed: Mapping[str, tuple[Field, str]]) -> tuple[tuple[Field, Choice], ...]:
+        """The choices for the picker fields in `placed`, task set first. Runs in a thread. A task
+        given without its set brings its set along when its field lists from one."""
+        source = self.source()
+        found: list[tuple[Field, Choice]] = []
+        task_set = placed.get("task_set")
+        task = placed.get("task")
+        set_field = task_set[0] if task_set else None
+        set_id = task_set[1] if task_set else None
+        if task is not None and set_field is None and isinstance(task[0], TaskField) and task[0].task_set:
+            linked = next((f for f in self.form.fields if f.name == task[0].task_set), None)
+            if isinstance(linked, TaskSetField):
+                try:
+                    set_field, set_id = linked, source.task(task[1]).row.dataset_id
+                except Exception:  # a task that isn't loaded leaves both pickers alone
+                    return ()
+        if set_field is not None:
+            chosen = next((c for c in task_set_choices(source) if c.value == set_id), None)
+            if chosen is None:
+                set_id = None
+            else:
+                found.append((set_field, chosen))
+        if task is not None:
+            listed = set_id if isinstance(task[0], TaskField) and task[0].task_set else None
+            chosen = next((c for c in task_choices(source, listed) if c.value == task[1]), None)
+            if chosen is not None:
+                found.append((task[0], chosen))
+        if (run := placed.get("run")) is not None:
+            chosen = next((c for c in run_choices(source) if c.value == run[1]), None)
+            if chosen is not None:
+                found.append((run[0], chosen))
+        return tuple(found)
+
+    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        if event.worker.group != PREFILL_GROUP:
+            return
+        event.stop()
+        if event.state == WorkerState.SUCCESS:
+            self.apply_choices(cast("tuple[tuple[Field, Choice], ...]", event.worker.result))
+        elif event.state == WorkerState.ERROR:
+            self.focus_empty()
+
+    def apply_choices(self, found: tuple[tuple[Field, Choice], ...]) -> None:
+        for field, choice in found:
+            control = self.row(field.name).control
+            if not isinstance(control, Picker):
+                continue
+            control.pick(choice)
+            if isinstance(field, TaskSetField):
+                self.link_tasks(field.name, choice.value)
+        self.focus_empty()
+
+    def focus_empty(self) -> None:
+        """Focus the first required field that's still empty, or Review when none is."""
+        for row in self.rows:
+            if row.field.required and row.raw in (None, "", ()):
+                row.focus_control()
+                return
+        self.query_one(ReviewButton).focus()

@@ -3,11 +3,14 @@
 Navigation is a stack per destination (Textual modes): `1` to `4` switch destination and keep
 where you were in each, opening a row pushes a detail screen, and `esc` or `backspace` pops it.
 Screens move around only through `open_task`, `open_dataset`, `open_run`, `open_episode`,
-`open_job` and `open_output`.
+`open_job`, `open_output` and `open_workbench`.
 
 Given a `JobRunner`, the app adds `5 Workbench`. It listens to the runner, hands each batch of
 events to the screens through `job_events`, counts what's running in the header, says when a job
-ends, and swaps in a reloaded source so new task sets and runs show up where you are.
+ends, and swaps in a reloaded source so new task sets and runs show up where you are. A viewer
+screen's Workbench keys (`P` try a patch, `C` calibrate and the rest) are bound to
+`app.workbench('<action>')`: they show only with a runner, and the screen says what to fill in
+through `workbench_values`.
 """
 
 from __future__ import annotations
@@ -20,12 +23,13 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from queue import Empty, SimpleQueue
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Protocol, runtime_checkable
 
 from rich.text import Text
 from textual.app import App
 from textual.binding import Binding, BindingType
 from textual.command import DiscoveryHit, Hit, Hits, Provider
+from textual.markup import escape
 from textual.reactive import reactive
 from textual.screen import Screen
 from textual.scrollbar import ScrollBar, ScrollBarRender
@@ -82,6 +86,16 @@ DESTINATIONS: tuple[Destination, ...] = (
     Destination("4", "Reference", "reference"),
 )
 WORKBENCH = Destination("5", "Workbench", "workbench")
+NO_WORKBENCH = "The Workbench is off. Start gauntlet tui with --workspace DIR to turn it on."
+
+
+@runtime_checkable
+class WorkbenchShortcuts(Protocol):
+    """A screen with Workbench keys. `workbench_values` gives the prefill for an action (see
+    `GauntletApp.open_workbench`), or None after saying why it can't, like a run that only has
+    summary rows."""
+
+    def workbench_values(self, action_id: str) -> dict[str, str] | None: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -332,10 +346,9 @@ class GauntletApp(App[None]):
         for record in ended:
             word = record.state
             self.notify(
-                f"{record.spec.title} {word}.",
+                f"{escape(record.spec.title)} {word}. [@click=app.open_job({record.id!r})]Open it[/]",
                 title="Job finished",
                 severity=TOAST_SEVERITY[word],
-                markup=False,
             )
         if ended and self.reload_source is not None:
             self.run_worker(
@@ -400,6 +413,8 @@ class GauntletApp(App[None]):
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "back":
             return len(self.screen_stack) > 1
+        if action == "workbench":
+            return self.jobs is not None
         return True
 
     def open_task(self, instance_id: str) -> None:
@@ -416,6 +431,40 @@ class GauntletApp(App[None]):
 
     def open_job(self, job_id: str) -> None:
         self.push_screen(JobScreen(job_id))
+
+    def open_workbench(self, action_id: str, **prefill: str) -> None:
+        """Go to the Workbench on `action_id` with its form filled in by meaning: `task_set` (a
+        dataset id), `task` (an instance id), `run` (a run id) and `patch` (a path). A value with
+        no field of its kind is left out. Without a runner this only says the Workbench is off."""
+        if self.jobs is None:
+            self.notify(NO_WORKBENCH, severity="warning", markup=False)
+            return
+        self.call_later(self.show_workbench, action_id, dict(prefill))
+
+    async def show_workbench(self, action_id: str, prefill: dict[str, str]) -> None:
+        await self.switch_mode(WORKBENCH.mode)
+        while len(self.screen_stack) > 1 and not isinstance(self.screen, WorkbenchScreen):
+            self.pop_screen()
+        screen = self.screen
+        if isinstance(screen, WorkbenchScreen):
+            screen.open_action(action_id, prefill)
+
+    def action_workbench(self, action_id: str) -> None:
+        screen = self.screen
+        values = screen.workbench_values(action_id) if isinstance(screen, WorkbenchShortcuts) else {}
+        if values is not None:
+            self.open_workbench(action_id, **values)
+
+    def action_open_job(self, job_id: str) -> None:
+        """Open a job from its toast: on the Workbench, where its screen belongs."""
+        if isinstance(self.screen, JobScreen) and self.screen.job_id == job_id:
+            return
+        self.call_later(self.show_job, job_id)
+
+    async def show_job(self, job_id: str) -> None:
+        if self.jobs is not None and self.current_mode != WORKBENCH.mode:
+            await self.switch_mode(WORKBENCH.mode)
+        self.open_job(job_id)
 
     def open_text(self, path: str, title: str) -> None:
         self.push_screen(TextFileScreen(path, title))

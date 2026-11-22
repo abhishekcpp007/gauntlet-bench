@@ -275,8 +275,9 @@ async def test_a_toast_says_when_a_job_ends(monkeypatch: pytest.MonkeyPatch):
         runner.submit(make_spec(title="Scan fix.diff", action="scan_patch"))
         runner.run_until_idle()
         await settle(app, pilot)
-        assert ("Calibrate on live succeeded.", "information") in toasts
-        assert ("Scan fix.diff failed.", "error") in toasts
+        said = [(message.split(" [")[0], severity) for message, severity in toasts]
+        assert ("Calibrate on live succeeded.", "information") in said
+        assert ("Scan fix.diff failed.", "error") in said
 
 
 async def test_a_finished_job_reloads_an_open_list_and_keeps_your_place():

@@ -246,6 +246,53 @@ class RunField(Field):
         return raw
 
 
+PREFILL_KINDS: dict[str, type[Field]] = {
+    "task_set": TaskSetField,
+    "task": TaskField,
+    "run": RunField,
+    "patch": PathField,
+}
+SHORTCUT_KEYS: dict[str, str] = {
+    "make_tasks": "M",
+    "leakcheck": "L",
+    "check_envs": "E",
+    "calibrate": "C",
+    "run_policies": "O",
+    "try_patch": "P",
+    "report": "R",
+}
+
+
+def shortcut(action_id: str) -> tuple[str, str]:
+    """The key and the binding action for a viewer screen's way into the Workbench on `action_id`:
+    `Binding(*shortcut("calibrate"), "Calibrate")`."""
+    return SHORTCUT_KEYS[action_id], f"app.workbench('{action_id}')"
+
+
+STILL_LOADING = "Still loading. Try again in a moment."
+SUMMARY_ONLY_RUN = "This run only has summary rows, so there's no results file to report on."
+
+
+def fits_prefill(key: str, field: Field) -> bool:
+    """Whether `field` is the kind a prefill `key` names. A patch only goes in a file path."""
+    kind = PREFILL_KINDS.get(key)
+    if kind is None or not isinstance(field, kind):
+        return False
+    return not isinstance(field, PathField) or field.kind == "file"
+
+
+def place_prefill(fields: Sequence[Field], prefill: Mapping[str, str]) -> dict[str, tuple[Field, str]]:
+    """Where each prefill value goes, by meaning, not by field name: `task_set` in the first task
+    set field, `task` in the first task field, `run` in the first run field and `patch` in the
+    first file path. A key with no field of its kind is left out."""
+    placed: dict[str, tuple[Field, str]] = {}
+    for key, value in prefill.items():
+        field = next((f for f in fields if fits_prefill(key, f)), None)
+        if field is not None:
+            placed[key] = (field, value)
+    return placed
+
+
 def picked_file(raw: object, missing: str) -> Choice:
     if not isinstance(raw, Choice) or raw.path is None:
         raise FieldError(missing)

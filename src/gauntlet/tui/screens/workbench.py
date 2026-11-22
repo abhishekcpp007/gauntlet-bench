@@ -43,14 +43,19 @@ JOBS_TAB = "jobs"
 MACHINE_GROUP = "machine"
 LOW_DISK_GB = 20
 LOW_DISK_BYTES = LOW_DISK_GB * GIGABYTE
+MIN_PATH_WIDTH = 16
 CHECKING = "Checking the machine first."
 NO_JOBS = Empty("No jobs yet.", "Pick an action, fill in its form and press ctrl+r to review it.")
 NO_FORM_YET = "This action doesn't have a form in the Workbench yet."
 NO_FORM_HINT = "Run it from the command line for now: gauntlet --help lists every command."
 
 
-def machine_line(machine: Machine | None, look: Look, error: str | None = None) -> Text:
-    """`✓ Docker running · 42.1 GB free · ✗ no Anthropic key · workspace ./gauntlet-work`."""
+def machine_line(
+    machine: Machine | None, look: Look, error: str | None = None, *, width: int | None = None
+) -> Text:
+    """`✓ Docker running · 42.1 GB free · ✗ no Anthropic key · workspace ./gauntlet-work`. Given a
+    `width`, a long workspace path is cut in the middle so both ends show, and goes on a line of
+    its own when there's too little room beside the rest."""
     dot = look.muted(f"  {look.glyphs.dot}  ")
     if error is not None:
         return Text.assemble(look.mark(ERROR, word=False), f" Couldn't check the machine: {error}")
@@ -74,16 +79,27 @@ def machine_line(machine: Machine | None, look: Look, error: str | None = None) 
     key = KEY_SET if machine.anthropic_key_set else NO_KEY
     text.append_text(look.mark(key, word=False))
     text.append(f" {key.word}", style=look.style("muted") if not machine.anthropic_key_set else "")
-    text.append_text(dot)
-    text.append_text(look.muted("workspace "))
-    text.append_text(fmt.safe_text(machine.workspace, single_line=True))
+    path = fmt.visible(fmt.one_line(machine.workspace))
+    label = look.muted("workspace ")
+    if width is None:
+        text.append_text(dot)
+    else:
+        room = width - text.cell_len - dot.cell_len - label.cell_len
+        if room < min(len(path), MIN_PATH_WIDTH):
+            text.append("\n")
+            room = width - label.cell_len
+        else:
+            text.append_text(dot)
+        path = fmt.middle(path, max(room, MIN_PATH_WIDTH), look.glyphs.ellipsis)
+    text.append_text(label)
+    text.append_text(fmt.safe_text(path, single_line=True))
     return text
 
 
 class MachineLine(Themed):
     DEFAULT_CSS = """
     MachineLine {
-        height: 1;
+        height: auto;
         padding: 0 1;
         margin: 1 0 0 0;
     }
@@ -97,10 +113,10 @@ class MachineLine(Themed):
     def show(self, machine: Machine | None, error: str | None = None) -> None:
         self.machine = machine
         self.error = error
-        self.refresh()
+        self.refresh(layout=True)
 
     def render(self) -> RenderableType:
-        return machine_line(self.machine, self.look, self.error)
+        return machine_line(self.machine, self.look, self.error, width=self.content_size.width)
 
 
 class ActionList(OptionList):
@@ -211,6 +227,8 @@ def newest_first(records: Sequence[JobRecord]) -> list[JobRecord]:
 class WorkbenchScreen(GauntletScreen):
     """See the module docstring."""
 
+    HELP_GROUP = "Workbench"
+    HELP_EVERY_PANE = True
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("r", "recheck", "Recheck machine", show=False),
     ]
@@ -434,6 +452,21 @@ class WorkbenchScreen(GauntletScreen):
 
     def show_tab(self, tab: str) -> None:
         self.query_one("#wb-tabs", TabbedContent).active = tab
+
+    def open_action(self, action_id: str, prefill: Mapping[str, str]) -> None:
+        """Show `action_id` on the Actions tab with `prefill` in its form (`FormView.prefill`).
+        An action with no form shows its "not available" note, and an unknown id changes nothing."""
+        if self.info_for(action_id) is None:
+            return
+        self.show_tab(ACTIONS_TAB)
+        options = self.query_one(ActionList)
+        options.highlighted = options.get_option_index(action_id)
+        self.show_action(action_id)
+        view = self.forms.get(action_id)
+        if view is None:
+            self.call_after_refresh(options.focus)
+        else:
+            self.call_after_refresh(view.prefill, dict(prefill))
 
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
         super().on_tabbed_content_tab_activated()
