@@ -22,7 +22,7 @@ from gauntlet.tui.widgets.buildresult import BuildResult
 from gauntlet.tui.widgets.form import FormBanner, FormView
 from gauntlet.tui.widgets.formextras import FormNote
 from gauntlet.tui.workbench import forms
-from gauntlet.tui.workbench.make_tasks import LIVE_PRS, LIVE_TASKS, SUITE_RUNS, MakeTasks
+from gauntlet.tui.workbench.make_tasks import LIVE_PRS, LIVE_TASKS, MakeTasks
 from gauntlet.tui.workspace import Workspace
 
 from .factories import LIVE, make_source, screen_text
@@ -162,13 +162,14 @@ async def test_the_builders_refusal_shows_on_top(tmp_path: Path, values, words):
         assert error is not None and words in error
 
 
-async def test_the_form_says_what_it_costs(tmp_path: Path):
+async def test_the_form_says_what_it_costs_and_how_few_prs_make_a_task(tmp_path: Path):
     app = form_app(MakeTasks(), workspace=tmp_path)
     async with app.run_test(size=WIDE) as pilot:
         await mounted_form(app, pilot)
         note = app.query_one(FormNote).text
-        assert "Docker" in note and "network" in note and f"{SUITE_RUNS} times" in note
         assert f"kept {LIVE_TASKS} tasks from {LIVE_PRS} PRs" in note
+        intro = view_intro(app)
+        assert "Docker" in intro and "network" in intro and f"run {actions.SUITE_RUNS} times" in intro
         text = screen_text(app)
         assert "Full runs the whole suite" in text and "flaky" in text
 
@@ -371,3 +372,8 @@ async def test_a_build_that_kept_nothing_wont_open_an_empty_task_set(tmp_path: P
         await pilot.press("o")
         await settle(app, pilot)
         assert not isinstance(app.screen, DatasetScreen)
+
+
+def view_intro(app) -> str:
+    """The action's description at the top of the form."""
+    return str(app.query_one(FormView).info.description)

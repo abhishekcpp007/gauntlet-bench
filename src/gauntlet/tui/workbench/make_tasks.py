@@ -30,7 +30,6 @@ LIVE_PRS = 186
 LIVE_TASKS = 53
 """The shipped Live set's funnel, from datasets/gauntlet-live-2026-11/stats.json (a test checks it)."""
 
-SUITE_RUNS = actions.SUITE_RUNS
 
 SCOPES = (
     Choice("full", "full: the whole test suite", "catches a break anywhere in the repo"),
@@ -39,10 +38,6 @@ SCOPES = (
 RARELY_KEPT = (
     f"Most PRs don't make a task, and that's normal: the shipped Live set kept {LIVE_TASKS} tasks "
     f"from {LIVE_PRS} PRs."
-)
-COSTS = (
-    "Needs Docker and the network. Each PR takes minutes, since its tests run "
-    f"{SUITE_RUNS} times at the default fix runs. {RARELY_KEPT}"
 )
 
 
@@ -84,7 +79,7 @@ class MakeTasks(ActionForm):
             label="Fix runs",
             hint=(
                 "How often the merged fix is run, to catch flaky tests. "
-                f"At {actions.FIX_RUNS} the tests run {SUITE_RUNS} times a PR."
+                f"At {actions.FIX_RUNS} the tests run {actions.SUITE_RUNS} times a PR."
             ),
             default=actions.FIX_RUNS,
             minimum=actions.AT_LEAST_ONE,
@@ -116,7 +111,7 @@ class MakeTasks(ActionForm):
         return built_outputs(record)
 
     def extras(self, view: FormView) -> Sequence[tuple[Widget, str | None]]:
-        return ((FormNote(COSTS, id="make-tasks-costs"), None),)
+        return ((FormNote(RARELY_KEPT, id="make-tasks-kept"), None),)
 
     def build(self, values: Values) -> JobSpec:
         limit = values.integer("limit")
