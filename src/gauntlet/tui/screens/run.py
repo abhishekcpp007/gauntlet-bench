@@ -10,10 +10,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from typing import ClassVar
 
 from rich.console import RenderableType
 from rich.text import Text
 from textual import work
+from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
 from textual.widget import Widget
@@ -52,6 +54,7 @@ from ..widgets.matrix import Matrix
 from ..widgets.stat import Stat
 from ..widgets.states import Empty, EmptyState
 from ..widgets.themed import Themed
+from ..workbench.base import STILL_LOADING, SUMMARY_ONLY_RUN, shortcut
 from .base import DataScreen
 
 POLICY_KINDS: tuple[PolicyKind, ...] = ("oracle", "noop", "cheat", "model")
@@ -317,6 +320,7 @@ def facet_groups(facets: EpisodeFacets) -> list[FacetGroup]:
 
 class RunScreen(DataScreen[RunData]):
     CSS_PATH = "run.tcss"
+    BINDINGS: ClassVar[list[BindingType]] = [Binding(*shortcut("report"), "Report")]
     what = "the run"
 
     def __init__(self, run_id: str) -> None:
@@ -326,6 +330,7 @@ class RunScreen(DataScreen[RunData]):
         self.total_episodes = 0
         self.pending: str | None = None
         self.facts: list[Fact] = []
+        self.summary: RunSummary | None = None
 
     def fetch(self) -> RunData:
         source = self.source
@@ -340,6 +345,7 @@ class RunScreen(DataScreen[RunData]):
     def build(self, data: RunData) -> Iterable[Widget]:
         look = self.gauntlet.look
         summary = data.detail.summary
+        self.summary = summary
         self.total_episodes = len(data.episodes)
         self.facts = run_facts(summary, look)
         yield Horizontal(
@@ -501,6 +507,16 @@ class RunScreen(DataScreen[RunData]):
 
     def on_matrix_opened(self, event: Matrix.Opened) -> None:
         self.gauntlet.open_episode(self.run_id, event.episode_id)
+
+    def workbench_values(self, action_id: str) -> dict[str, str] | None:
+        """Report on this run, unless it only has summary rows."""
+        problem = STILL_LOADING if self.summary is None else None
+        if self.summary is not None and self.summary.results_file is None:
+            problem = SUMMARY_ONLY_RUN
+        if problem is not None:
+            self.notify(problem, markup=False)
+            return None
+        return {"run": self.run_id}
 
     def copy_target(self) -> tuple[str, str] | None:
         return self.run_id, "run id"

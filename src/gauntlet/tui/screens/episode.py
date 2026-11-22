@@ -57,6 +57,7 @@ from ..widgets.rewardbar import PatchState, RewardBar
 from ..widgets.states import Empty, EmptyState
 from ..widgets.themed import Themed
 from ..widgets.timeline import Timeline
+from ..workbench.base import STILL_LOADING, shortcut
 from .base import DataScreen
 
 TEST_CLASSES: tuple[TestClass, ...] = ("f2p", "n2p", "s2p", "p2p")
@@ -286,7 +287,10 @@ class EpisodeScreen(DataScreen[EpisodeDetail]):
     CSS_PATH = "episode.tcss"
     what = "the episode"
 
-    BINDINGS: ClassVar[list[BindingType]] = [Binding("t", "open_task", "Open task")]
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding("t", "open_task", "Open task"),
+        Binding(*shortcut("try_patch"), "Try a patch"),
+    ]
 
     def __init__(self, run_id: str, episode_id: str) -> None:
         super().__init__()
@@ -659,6 +663,13 @@ class EpisodeScreen(DataScreen[EpisodeDetail]):
             self._pending_step = step
         elif not timeline.show_step(step):
             self.notify(f"Step {step} isn't in the trajectory.", markup=False)
+
+    def workbench_values(self, action_id: str) -> dict[str, str] | None:
+        """Try another patch on this episode's task. The form finds the task's set."""
+        if self.detail is None:
+            self.notify(STILL_LOADING, markup=False)
+            return None
+        return {"task": self.detail.row.instance_id}
 
     def copy_target(self) -> tuple[str, str] | None:
         return self.episode_id, "episode id"

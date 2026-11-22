@@ -1,7 +1,8 @@
 """Overview (`1`): what's loaded, at a glance.
 
 Headline numbers, a table of datasets and a table of runs (both open with `enter`), and the
-"How a score is made" strip that walks the grading steps in order.
+"How a score is made" strip that walks the grading steps in order. With a job runner, one line
+under the numbers points to the Workbench.
 """
 
 from __future__ import annotations
@@ -83,6 +84,24 @@ RUN_COLUMNS: tuple[Column[RunSummary], ...] = (
 )
 
 
+WORKBENCH_HINT = "for the Workbench. It makes tasks from fresh PRs and scores your own patches."
+
+
+class WorkbenchHint(Themed):
+    """One line that points to the Workbench, shown only when there's a job runner."""
+
+    DEFAULT_CSS = """
+    WorkbenchHint {
+        height: 1;
+        padding: 0 1;
+    }
+    """
+
+    def render(self) -> RenderableType:
+        look = self.look
+        return Text.assemble(look.muted("Press "), look.accent("5"), " ", look.muted(WORKBENCH_HINT))
+
+
 class ScoreStrip(Themed):
     """The grading steps in order, on as many lines as the width needs."""
 
@@ -140,6 +159,8 @@ class OverviewScreen(DataScreen[tuple[Overview, Reference]]):
         overview, reference = data
         look = self.gauntlet.look
         yield Horizontal(*headline(overview, look), id="headline")
+        if self.gauntlet.jobs is not None:
+            yield WorkbenchHint(id="workbench-hint")
         for warning in overview.warnings:
             line = look.mark(WARNING, word=False) + Text(" ") + fmt.safe_text(warning, single_line=True)
             yield Static(line, classes="warning")

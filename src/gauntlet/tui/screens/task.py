@@ -9,12 +9,13 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from functools import partial
-from typing import cast
+from typing import ClassVar, cast
 
 from rich.console import Group, RenderableType
 from rich.table import Table
 from rich.text import Text
 from textual.app import ComposeResult
+from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
 from textual.widget import Widget
@@ -33,6 +34,7 @@ from ..widgets.filterbar import FilterBar
 from ..widgets.grid import CELL_PADDING, Column, DataGrid, GridTable
 from ..widgets.states import Empty, EmptyState, describe_error
 from ..widgets.themed import Themed
+from ..workbench.base import STILL_LOADING, shortcut
 from .base import DataScreen
 
 TESTS_TAB = "tests"
@@ -312,6 +314,10 @@ def _titled(title: str, rows: Sequence[Definition]) -> list[Widget]:
 
 class TaskScreen(DataScreen[TaskDetail]):
     CSS_PATH = "task.tcss"
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding(*shortcut("try_patch"), "Try a patch"),
+        Binding(*shortcut("leakcheck"), "Leak check"),
+    ]
 
     what = "the task"
 
@@ -319,11 +325,13 @@ class TaskScreen(DataScreen[TaskDetail]):
         super().__init__()
         self.instance_id = instance_id
         self.crumb = instance_id
+        self.dataset_id: str | None = None
 
     def fetch(self) -> TaskDetail:
         return self.source.task(self.instance_id)
 
     def build(self, data: TaskDetail) -> Iterable[Widget]:
+        self.dataset_id = data.row.dataset_id
         yield Horizontal(*self.facts(data), id="task-facts")
         yield Static(self.summary_line(data), id="task-line")
         row = data.row
@@ -482,6 +490,15 @@ class TaskScreen(DataScreen[TaskDetail]):
     def on_resize(self, event: Resize) -> None:
         super().on_resize(event)
         self.set_class(event.size.height < COMPACT_HEIGHT, "-compact")
+
+    def workbench_values(self, action_id: str) -> dict[str, str] | None:
+        """Try a patch on this task, or leak check its task set."""
+        if action_id == "try_patch":
+            return {"task": self.instance_id} | ({"task_set": self.dataset_id} if self.dataset_id else {})
+        if self.dataset_id is None:
+            self.notify(STILL_LOADING, markup=False)
+            return None
+        return {"task_set": self.dataset_id}
 
     def copy_target(self) -> tuple[str, str] | None:
         return self.instance_id, "instance id"

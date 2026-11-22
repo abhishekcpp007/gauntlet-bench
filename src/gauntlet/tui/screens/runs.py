@@ -9,8 +9,10 @@ run id and `enter` opens the run.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import ClassVar
 
 from rich.text import Text
+from textual.binding import Binding, BindingType
 from textual.containers import Vertical
 from textual.widget import Widget
 from textual.widgets import Static
@@ -22,6 +24,7 @@ from ..theme import Look
 from ..widgets.filterbar import FilterBar
 from ..widgets.grid import Column, DataGrid
 from ..widgets.states import Empty
+from ..workbench.base import SUMMARY_ONLY_RUN, shortcut
 from .base import DataScreen
 
 INTRO = "A run is a batch of graded episodes. Add yours: gauntlet tui --run <folder>"
@@ -31,6 +34,7 @@ NO_RUNS = Empty(
 )
 NO_MATCH = Empty("No runs match.", "Press / and then esc to clear the filter.")
 KINDS = {"shipped": "shipped", "folder": "folder"}
+NO_RUN_PICKED = "Move to a run first."
 
 
 def _kind(run: RunSummary, _look: Look) -> Text:
@@ -77,6 +81,7 @@ def matches(run: RunSummary, query: str) -> bool:
 
 class RunsScreen(DataScreen[tuple[RunSummary, ...]]):
     CSS_PATH = "runs.tcss"
+    BINDINGS: ClassVar[list[BindingType]] = [Binding(*shortcut("report"), "Report")]
     crumb = "Runs"
     what = "runs"
 
@@ -106,6 +111,19 @@ class RunsScreen(DataScreen[tuple[RunSummary, ...]]):
 
     def on_data_grid_opened(self, event: DataGrid.Opened) -> None:
         self.gauntlet.open_run(event.key)
+
+    def workbench_values(self, action_id: str) -> dict[str, str] | None:
+        """Report on the highlighted run, unless it only has summary rows."""
+        grids = self.query("#runs")
+        key = grids.first(DataGrid).current_key if grids else None
+        run = next((r for r in self.runs if r.id == key), None)
+        if run is None:
+            self.notify(NO_RUN_PICKED, markup=False)
+            return None
+        if run.results_file is None:
+            self.notify(SUMMARY_ONLY_RUN, markup=False)
+            return None
+        return {"run": run.id}
 
     def copy_target(self) -> tuple[str, str] | None:
         grids = self.query("#runs")

@@ -1,5 +1,9 @@
 """The help screen (`?`): every key that works where you pressed it, grouped, built from the live
-bindings so it can't go stale."""
+bindings so it can't go stale.
+
+A screen names its own group with `HELP_GROUP` (else it's "This screen"). A screen with
+`HELP_EVERY_PANE` also lists the keys of its panes that don't have focus, like the Workbench's
+form while you're in its action list. A viewer screen's Workbench keys go under "Workbench"."""
 
 from __future__ import annotations
 
@@ -19,6 +23,9 @@ from ..widgets.themed import Themed
 
 EVERYWHERE = "Everywhere"
 THIS_SCREEN = "This screen"
+WORKBENCH_KEYS = "Workbench"
+WORKBENCH_ACTION = "app.workbench("
+OWN_PACKAGE = "gauntlet."
 TEXTUAL_GROUPS: tuple[tuple[type[DOMNode], str], ...] = (
     (Tabs, "Tabs"),
     (Input, "Text box"),
@@ -38,7 +45,7 @@ def group_name(node: DOMNode) -> str:
     if isinstance(node, App):
         return EVERYWHERE
     if isinstance(node, Screen):
-        return THIS_SCREEN
+        return str(getattr(node, "HELP_GROUP", THIS_SCREEN))
     if hasattr(node, "HELP_GROUP"):
         return str(node.HELP_GROUP)
     for kind, name in TEXTUAL_GROUPS:
@@ -47,23 +54,45 @@ def group_name(node: DOMNode) -> str:
     return type(node).__name__
 
 
+def own_bindings(node: DOMNode) -> list[Binding]:
+    """The bindings this app's own classes give `node`, leaving out the ones Textual adds."""
+    found: list[Binding] = []
+    for kind in type(node).__mro__:
+        if kind.__module__.startswith(OWN_PACKAGE):
+            found.extend(Binding.make_bindings(kind.__dict__.get("BINDINGS", ())))
+    return found
+
+
+def other_panes(screen: Screen) -> list[tuple[DOMNode, Binding]]:
+    """The keys of every widget on `screen` that names a help group, focused or not."""
+    return [
+        (node, binding)
+        for node in screen.query("*")
+        if hasattr(node, "HELP_GROUP")
+        for binding in own_bindings(node)
+    ]
+
+
 def collect(screen: Screen) -> list[tuple[str, list[KeyHelp]]]:
     """The bindings active on `screen`, grouped by owner, closest first. Keys bound to the same
     action are shown together, like `esc/backspace`."""
     app = screen.app
     groups: dict[str, dict[str, list[str]]] = {}
     descriptions: dict[tuple[str, str], str] = {}
-    for active in screen.active_bindings.values():
-        binding: Binding = active.binding
+    found = [(active.node, active.binding) for active in screen.active_bindings.values()]
+    if getattr(screen, "HELP_EVERY_PANE", False):
+        found += other_panes(screen)
+    for node, binding in found:
         if not binding.description:
             continue
-        name = group_name(active.node)
+        name = WORKBENCH_KEYS if binding.action.startswith(WORKBENCH_ACTION) else group_name(node)
         keys = groups.setdefault(name, {}).setdefault(binding.action, [])
         display = app.get_key_display(binding)
         if display not in keys:
             keys.append(display)
         descriptions[(name, binding.action)] = binding.description
-    ordered = sorted(groups, key=lambda g: (g == EVERYWHERE, g == THIS_SCREEN))
+    own = group_name(screen)
+    ordered = sorted(groups, key=lambda g: (g == EVERYWHERE, g == own))
     return [
         (
             name,

@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from typing import ClassVar
 
 from rich.cells import cell_len
 from rich.console import RenderableType
 from rich.table import Table
 from rich.text import Text
+from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widget import Widget
 from textual.widgets import Static
@@ -25,6 +27,7 @@ from ..widgets.grid import DataGrid
 from ..widgets.stat import Stat
 from ..widgets.states import Empty
 from ..widgets.themed import Themed
+from ..workbench.base import shortcut
 from .base import DataScreen
 from .tasks import TaskTable
 
@@ -129,6 +132,12 @@ def headline(detail: DatasetDetail, look_ok: Text) -> list[Stat]:
 
 class DatasetScreen(DataScreen[tuple[DatasetDetail, tuple[TaskRow, ...]]]):
     CSS_PATH = ["dataset.tcss", "tasks.tcss"]
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding(*shortcut("calibrate"), "Calibrate"),
+        Binding(*shortcut("run_policies"), "Run policies"),
+        Binding(*shortcut("leakcheck"), "Leak check"),
+        Binding(*shortcut("check_envs"), "Fingerprints"),
+    ]
 
     what = "the dataset"
 
@@ -183,6 +192,10 @@ class DatasetScreen(DataScreen[tuple[DatasetDetail, tuple[TaskRow, ...]]]):
 
     def on_data_grid_opened(self, event: DataGrid.Opened) -> None:
         self.gauntlet.open_task(event.key)
+
+    def workbench_values(self, action_id: str) -> dict[str, str] | None:
+        """Every Workbench key here works on this task set."""
+        return {"task_set": self.dataset_id}
 
     def copy_target(self) -> tuple[str, str] | None:
         return self.dataset_id, "dataset id"

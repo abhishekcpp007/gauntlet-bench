@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from functools import partial
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from textual.app import ComposeResult
+from textual.binding import Binding, BindingType
 from textual.containers import Vertical
 from textual.widget import Widget
 from textual.worker import Worker, WorkerState
@@ -23,6 +24,7 @@ from ..theme import leak_mark, look_for
 from ..widgets.filterbar import FacetGroup, FilterBar
 from ..widgets.grid import Column, DataGrid
 from ..widgets.states import Empty, describe_error
+from ..workbench.base import shortcut
 from .base import DataScreen
 
 if TYPE_CHECKING:
@@ -128,6 +130,7 @@ class TaskTable(Vertical):
 
 class TasksScreen(DataScreen[tuple[tuple[TaskRow, ...], TaskFacets]]):
     CSS_PATH = "tasks.tcss"
+    BINDINGS: ClassVar[list[BindingType]] = [Binding(*shortcut("make_tasks"), "Make tasks")]
 
     crumb = "Tasks"
     what = "tasks"
@@ -141,3 +144,7 @@ class TasksScreen(DataScreen[tuple[tuple[TaskRow, ...], TaskFacets]]):
 
     def on_data_grid_opened(self, event: DataGrid.Opened) -> None:
         self.gauntlet.open_task(event.key)
+
+    def workbench_values(self, action_id: str) -> dict[str, str] | None:
+        """Making tasks starts from a repo, so there's nothing to fill in from here."""
+        return {}
