@@ -226,33 +226,35 @@ Every agent episode, validation run, leak scan and grade boots its own container
 | `gauntlet report --results runs/results.jsonl` | the results tables. `--cutoff` and `--html` are optional |
 | `gauntlet calibrate --tasks tasks.jsonl` | the red-team run above |
 | `gauntlet cheatcatcher scan` and `rules` | Cheat Catcher on its own |
-| `gauntlet tui` | browse task sets and run folders in the terminal, read-only |
+| `gauntlet tui --workspace DIR` | browse task sets and runs in the terminal, and start jobs from its Workbench |
 
-`--policies` takes `oracle` and `noop`, plus `cheater` or `cheater:<trick>` for the cheats. A real model is `claude:<model id>`. Claude policies need the `claude` extra and `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`). `--attempts N` gives pass@k. `--max-episodes`, `--max-tokens`, `--max-seconds` and `--max-usd` (with `--prices`) cap what a run can spend. Runs are resumable, since an episode already in `results.jsonl` is skipped. Each episode adds a line to `results.jsonl` and saves its trajectory under `trajectories/`.
+`--policies` takes `oracle` and `noop`, plus `cheater` or `cheater:<trick>` for the cheats. `patch:<file>` applies the diff in that file and submits it, the way the oracle applies the merged fix. A real model is `claude:<model id>`. Claude policies need the `claude` extra and `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`). `--attempts N` gives pass@k. `--max-episodes`, `--max-tokens`, `--max-seconds` and `--max-usd` (with `--prices`) cap what a run can spend. Runs are resumable, since an episode already in `results.jsonl` is skipped. Each episode adds a line to `results.jsonl` and saves its trajectory under `trajectories/`.
 
 `gauntlet report` puts a 95% bootstrap interval next to pass@1, resampling tasks and not episodes, and it runs McNemar's exact test between each pair of policies. `--cutoff YYYY-MM-DD` splits every metric into PRs merged before and after that date. Every episode records how it was produced. That covers the harness version and policy params, the image and its fingerprint, plus the grading seed and the time. The report warns when one policy's rows weren't measured the same way.
 
 ## Terminal viewer
 
-`gauntlet tui` lets you browse the shipped task sets and any run folder from your terminal. It's built to show what a score is and why it came out that way.
+`gauntlet tui` opens the shipped task sets and any run folder in your terminal, and its Workbench runs jobs of your own. It's built to show what a score is and why it came out that way.
 
 Install it with `pip install "gauntlet[tui]"`, or run `uv sync` in a checkout. Then start it:
 
 ```bash
-gauntlet tui                  # reads ./datasets if it's there
-gauntlet tui --run runs/      # add a run folder (repeat --run for more)
+gauntlet tui                                # reads ./datasets if it's there
+gauntlet tui --run runs/                    # add a run folder (repeat --run for more)
+gauntlet tui --workspace ~/gauntlet-work    # where Workbench jobs write, ./gauntlet-work by default
 gauntlet tui --ascii --theme gauntlet-light
 ```
 
 | Key | What it does |
 |---|---|
-| `1` to `4` | switch between Overview, Tasks, Runs and Reference |
+| `1` to `5` | switch between Overview, Tasks, Runs, Reference and the Workbench |
 | `enter` / `esc` | open the row / go back |
 | `[` `]` | switch tabs on a detail screen |
 | `/` | filter the list as you type |
 | `s` | cycle the sort |
 | `c` | copy the id under the cursor |
 | `ctrl+p` | jump to any task, run or episode by id |
+| `M` `L` `E` `C` `O` `P` `R` | open the Workbench on an action, filled in from the screen you're on. `?` names each one |
 | `?` | every key that works where you are |
 
 **Overview** has the headline numbers with a table of datasets and a table of runs.
@@ -271,7 +273,40 @@ An **episode** shows its reward broken into parts next to Cheat Catcher's eviden
 
 **Reference** explains the grading steps and the leak checks, plus the Cheat Catcher rules and the cheat policies.
 
-The viewer is read-only. It never grades anything and it never changes a score.
+These viewer screens are read-only. They never grade anything and they never change a score. Only the Workbench starts anything.
+
+### Workbench
+
+Press `5` for the **Workbench**. It starts real `gauntlet` commands as separate processes, the same ones you'd type yourself. So a score from the Workbench is the score the CLI gives. Before a job starts you see its exact command lines and what it needs. You also see where it writes and how much disk is free. Then `enter` starts it.
+
+Jobs that use Docker run one at a time, in the order you started them. A job writes only into its workspace folder, and never into `datasets/`. Task sets go in `tasks/` and runs go in `runs/`. New task sets and runs show up in Tasks and Runs as soon as the job ends.
+
+The header shows whether Docker is running and how much disk is free. It also says whether `ANTHROPIC_API_KEY` is set, but never its value. Jobs just inherit your shell's environment.
+
+| Action | What it runs |
+|---|---|
+| From fresh PRs | `gauntlet collect`, then `gauntlet build` |
+| From a release range | `gauntlet ranges` to list the ranges, then `gauntlet build-lht` |
+| Leak check | `gauntlet leakcheck` |
+| Check env fingerprints | `gauntlet check-envs` |
+| Calibrate | `gauntlet calibrate`, the real fix and a blank answer against the 9 cheats |
+| Run policies | `gauntlet run` with any policies, `patch:<file>` included |
+| Try a patch | `gauntlet run --policies patch:<file>` on one task, then it opens the episode |
+| Scan a patch | `gauntlet cheatcatcher scan`, no Docker needed |
+| Report | `gauntlet report` |
+
+The check actions exit 1 when they find a problem. Their job then shows as failed, and the log says what they found.
+
+![The Workbench with Calibrate filled in for the Live set](docs/tui-workbench.svg)
+
+### Review it yourself
+
+You can check the whole trust story on your own repo without leaving the app.
+
+1. **Make tasks.** Press `5` and pick From fresh PRs, or press `M` on the Tasks screen. Type a repo like `mahmoud/boltons` and a start date. `ctrl+r` shows the commands and `enter` starts them.
+2. **Calibrate.** Open your new task set from Overview and press `C`. The real fix should resolve every task, and no cheat should score above 0.
+3. **Try your own patch.** Open a task and press `P`. Point it at a diff file. It's graded the way an agent's patch is, and the episode opens when it's done.
+4. **Read why it scored what it did.** The episode's Reward tab says how the number was reached. Evidence shows what Cheat Catcher found and where. Press `R` on the run for the full report.
 
 ## Limits
 

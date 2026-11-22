@@ -1,7 +1,9 @@
+import re
 from pathlib import Path
 
 import pytest
 
+from gauntlet.harness import cli
 from gauntlet.tui.app import NO_WORKBENCH, GauntletApp
 from gauntlet.tui.jobtypes import JobSpec
 from gauntlet.tui.screens.job import JobScreen
@@ -30,6 +32,9 @@ SMALL = (80, 24)
 TOMLI = "hukkin__tomli-318"
 MAGIC = "Rich-Harris__magic-string-379"
 DEPTH = 20
+README = Path(__file__).resolve().parents[2] / "README.md"
+TUI_COMMAND = re.compile(r"gauntlet tui\b[^`|#\n]*")
+FLAG = re.compile(r"--[a-z][a-z-]*")
 
 
 class TryPatchForm(ActionForm):
@@ -259,7 +264,8 @@ async def test_a_finished_jobs_toast_opens_it_on_the_workbench(monkeypatch: pyte
         record = runner.submit(make_spec(title="Odd [red]title[/red]"))
         runner.run_until_idle()
         await settle(app, pilot)
-        assert toasts == [f"Odd \\[red]title\\[/red] succeeded. [@click=app.open_job('{record.id}')]Open it[/]"]
+        link = f"[@click=app.open_job('{record.id}')]Open it[/]"
+        assert toasts == [f"Odd \\[red]title\\[/red] succeeded. {link}"]
         await app.run_action(f"app.open_job('{record.id}')")
         await settle(app, pilot)
         assert isinstance(app.screen, JobScreen) and app.screen.job_id == record.id
@@ -267,3 +273,12 @@ async def test_a_finished_jobs_toast_opens_it_on_the_workbench(monkeypatch: pyte
         await app.run_action(f"app.open_job('{record.id}')")
         await settle(app, pilot)
         assert len(app.screen_stack) == 2
+
+
+def test_the_readme_only_uses_flags_gauntlet_tui_has(capsys: pytest.CaptureFixture[str]):
+    with pytest.raises(SystemExit):
+        cli.main(["tui", "--help"])
+    known = set(FLAG.findall(capsys.readouterr().out))
+    used = {flag for line in TUI_COMMAND.findall(README.read_text()) for flag in FLAG.findall(line)}
+    assert "--workspace" in used
+    assert used <= known
