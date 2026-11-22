@@ -52,6 +52,6 @@ These come from the same code reading. They're smaller, but they're still not wh
 ## Not checked on this branch
 
 - No Docker and no Harbor run. The 17 tests in `tests/harness/test_harbor.py` pass offline, but none of them builds an image or starts Harbor.
-- The verifier installs the grader from `git+https://github.com/abhishekcpp007/NEW_REPO@<ref>`. Until the new repo is on GitHub under its real name, no Harbor image can be built from this branch and `harbor.yml` can't pass.
+- The verifier installs the grader from `git+https://github.com/abhishekcpp007/gauntlet-bench@<ref>`. Until the new repo is on GitHub under its real name, no Harbor image can be built from this branch and `harbor.yml` can't pass.
 - Harbor's `no-network` mode needs nftables fib inet on the Docker host. Docker Desktop on a Mac may not have it, so a real run needs a Linux host.
 - No parity run yet. Grading the same patches (gold, empty, a partial fix, a zoo cheat) with `grade_patch` and with Harbor's verifier is one of the Phase 3 checks.

@@ -44,7 +44,7 @@ from .runners import runner_for
 from .sandboxing import SCRATCH_GIT
 from .schema import HarnessTask
 
-HARNESS_URL = "https://github.com/abhishekcpp007/NEW_REPO"
+HARNESS_URL = "https://github.com/abhishekcpp007/gauntlet-bench"
 UV_IMAGE = "ghcr.io/astral-sh/uv:0.7.13"
 GRADER_PYTHON = "3.12"
 GRADER_ROOT = "/opt/gauntlet"

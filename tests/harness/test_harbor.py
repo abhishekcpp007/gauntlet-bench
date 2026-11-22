@@ -167,7 +167,7 @@ def test_dockerfile_pins_commit_and_grader(tmp_path):
     text = harbor.dockerfile(task, "python:3.12-slim", "abc1234")
     assert text.startswith("FROM python:3.12-slim\n")
     assert f"git fetch -q --depth 1 https://github.com/o/calc.git {task.base_commit}" in text
-    assert "NEW_REPO.git@abc1234" in text or "NEW_REPO@abc1234" in text
+    assert "gauntlet-bench.git@abc1234" in text or "gauntlet-bench@abc1234" in text
     # the scratch repo is made last, so everything the build left behind is in the base commit
     assert text.rindex("commit -q -m base") > text.rindex("pip install")
 
