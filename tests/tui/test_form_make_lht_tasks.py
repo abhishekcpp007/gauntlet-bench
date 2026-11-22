@@ -124,7 +124,7 @@ async def test_listing_runs_in_the_form_and_fills_the_ranges(tmp_path: Path):
     app = GauntletApp(make_source(), jobs=runner)
     async with app.run_test(size=WIDE) as pilot:
         screen, view = await open_form(app, pilot, tmp_path)
-        assert "release range is all the work between two release tags" in screen_text(app)
+        assert "A range is the work between two release tags" in screen_text(app)
         fill(view, repo=REPO, last="2")
         view.query_one("#list-ranges").press()
         await settle(app, pilot)
